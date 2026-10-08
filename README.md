@@ -7,7 +7,7 @@ A [Claude Code](https://code.claude.com) plugin marketplace: mods, skills, comma
 Add the marketplace once:
 
 ```
-/plugin marketplace add arhuncgi/claude-plugins
+/plugin marketplace add arhunsaday/claude-plugins
 ```
 
 Then install any plugin from it:
@@ -16,7 +16,7 @@ Then install any plugin from it:
 /plugin install <plugin>@arhun-plugins
 ```
 
-From a shell, `claude plugin marketplace add arhuncgi/claude-plugins` and `claude plugin install <plugin>@arhun-plugins` do the same.
+From a shell, `claude plugin marketplace add arhunsaday/claude-plugins` and `claude plugin install <plugin>@arhun-plugins` do the same.
 
 ## Plugins
 
