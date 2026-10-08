@@ -11,6 +11,18 @@
   },
   "plugins": [
     {
+      "name": "context-cache",
+      "source": "./plugins/context-cache",
+      "description": "Context usage, usage limits and prompt-cache warmth above the prompt, with Clear and Compact",
+      "category": "mod",
+      "tags": [
+        "mod",
+        "context",
+        "usage",
+        "prompt-cache"
+      ]
+    },
+    {
       "name": "plan-progress",
       "source": "./plugins/plan-progress",
       "description": "Live plan progress bars above the Claude Code prompt: stages, steps, foldable agent strips and soft sounds",
