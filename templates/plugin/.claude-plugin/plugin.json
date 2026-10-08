@@ -1,0 +1,10 @@
+{
+  "name": "example-plugin",
+  "version": "0.1.0",
+  "description": "One line: what this plugin adds.",
+  "author": {
+    "name": "Arhun Saday"
+  },
+  "license": "MIT",
+  "keywords": []
+}

@@ -1,0 +1,24 @@
+# macOS
+.DS_Store
+
+# local Claude Code state
+.claude/settings.local.json
+.claude/command-log.txt
+
+# written by the engine when it loads a mod
+.claude-plugin/types/
+**/.claude-plugin/types/
+.in_use
+tsconfig.json
+
+# dependencies and build output
+node_modules/
+dist/
+
+# plan-progress offline test output
+plugins/plan-progress/tests/register.mjs
+plugins/plan-progress/tests/look.html
+plugins/plan-progress/tests/*.results.json
+
+# context-cache /cache-status report
+context-cache-status.json

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "arhun-plugins",
+  "description": "Arhun Saday's Claude Code plugins: mods, skills, commands, agents and hooks.",
+  "owner": {
+    "name": "Arhun Saday",
+    "url": "https://github.com/arhuncgi"
+  },
+  "metadata": {
+    "pluginRoot": "./plugins"
+  },
+  "plugins": []
+}

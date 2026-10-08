@@ -1,0 +1,10 @@
+{
+  "name": "example-mod",
+  "version": "0.1.0",
+  "description": "One line: what this mod draws or changes.",
+  "author": {
+    "name": "Arhun Saday"
+  },
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
