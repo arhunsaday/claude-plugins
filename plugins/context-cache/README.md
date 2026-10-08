@@ -68,5 +68,5 @@ The weekly and Fable figures rely on an endpoint Anthropic hasn't documented. If
 - `hooks/model.ts`: the maths, thresholds and copy; no drawing.
 - `hooks/panel-svg.ts`: the desktop panel and collapsed line as SVG, measured with `hooks/metrics.ts`.
 - `hooks/view.tsx`: the terminal layout, and the desktop's SVG with the host's buttons and chevron.
-- `hooks/view.test.tsx`: `claude plugin test .` mounts the band on terminal and desktop.
+- `tests/view.test.tsx`: `claude plugin test .` mounts the band on terminal and desktop.
 - `types/index.d.ts`: the mod's `$.state` contract.

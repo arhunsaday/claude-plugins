@@ -23,7 +23,9 @@ From a shell, `claude plugin marketplace add arhunsaday/claude-plugins` and `cla
 | Plugin | Kind | What it does |
 |---|---|---|
 | [plan-progress](plugins/plan-progress) | mod | Live plan progress bars above the prompt, with agent strips you can fold and soft sounds. |
-| [context-cache](plugins/context-cache) | mod | Context usage, usage limits and prompt-cache warmth above the prompt; collapses to one line. |
+| [where-am-i](plugins/where-am-i) | mod | A live recap above the prompt: goal, what Claude is doing now, next step, what waits on you. |
+| [blast-radius](plugins/blast-radius) | mod | Holds destructive commands and shows what they would destroy before they run. |
+| [context-cache](plugins/context-cache) | mod | Context usage, usage limits and prompt-cache warmth above the prompt, as rings; collapses to one line. |
 
 ## Layout
 

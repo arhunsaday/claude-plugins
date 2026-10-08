@@ -11,6 +11,17 @@
   },
   "plugins": [
     {
+      "name": "blast-radius",
+      "source": "./plugins/blast-radius",
+      "description": "Holds destructive commands (rm -r, force pushes, git resets and cleans, branch deletes, migrations, SQL drops) and shows what they would destroy",
+      "category": "mod",
+      "tags": [
+        "mod",
+        "safety",
+        "git"
+      ]
+    },
+    {
       "name": "context-cache",
       "source": "./plugins/context-cache",
       "description": "Context usage, usage limits and prompt-cache warmth above the prompt, drawn in your theme; collapses to one line",
@@ -31,6 +42,17 @@
         "mod",
         "progress",
         "ui"
+      ]
+    },
+    {
+      "name": "where-am-i",
+      "source": "./plugins/where-am-i",
+      "description": "A live recap above the prompt: goal, what Claude is doing now, next step and what waits on you",
+      "category": "mod",
+      "tags": [
+        "mod",
+        "recap",
+        "focus"
       ]
     }
   ]
