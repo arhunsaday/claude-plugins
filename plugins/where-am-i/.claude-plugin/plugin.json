@@ -1,0 +1,12 @@
+{
+  "name": "where-am-i",
+  "version": "1.0.0",
+  "description": "A live recap above the prompt: the session's goal, what Claude is doing right now, what's next and what waits on you. Folds to one line; /where for a longer recap.",
+  "author": {
+    "name": "Arhun Saday",
+    "url": "https://arhun.fr"
+  },
+  "license": "MIT",
+  "keywords": ["mod", "recap", "focus", "adhd", "status"],
+  "types": "./types/index.d.ts"
+}
