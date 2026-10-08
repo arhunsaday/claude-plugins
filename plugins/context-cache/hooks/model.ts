@@ -257,7 +257,10 @@ export type LimitView = {
   reset: string
 }
 
-const TONE_COLORS: Record<LimitTone, Tone> = { normal: 'success', amber: 'warning', red: 'error' }
+// Each limit keeps its own colour while on pace; amber when well ahead of the time, red from 90%.
+const KIND_COLORS: Record<ContextCacheLimitKind, Tone> = { session: 'success', weekly: 'suggestion', fable: 'merged' }
+const colorOf = (kind: ContextCacheLimitKind, tone: LimitTone): Tone =>
+  tone === 'red' ? 'error' : tone === 'amber' ? 'warning' : KIND_COLORS[kind]
 
 /** Percent of the window that has elapsed, from its reset time. */
 export function timePct(limit: ContextCacheLimit, now: number): number | null {
@@ -286,7 +289,7 @@ export function limitView(kind: ContextCacheLimitKind, limit: ContextCacheLimit 
     usage: limit.usage,
     time,
     tone,
-    color: TONE_COLORS[tone],
+    color: colorOf(kind, tone),
     reset: fmtReset(limit.resetsAt, now),
   }
 }
@@ -369,28 +372,7 @@ export function noticeText(cache: CacheView, context: ContextCacheContext | null
 
 // ── Layout ─────────────────────────────────────────────────────────────────
 
-/**
- * How much of each row's trailing text there is room for: everything, the
- * figure and its reset, or the figure alone.
- */
-export type Detail = 'full' | 'short' | 'none'
-
-export function detailOf(columns: number): Detail {
-  if (columns >= 90) return 'full'
-  if (columns >= 60) return 'short'
-  return 'none'
-}
-
-/** Width of the label column ("Context", "Session", …) in cells. */
-export const LABEL_COLUMNS = 8
-
-/** Cells the bars take: about two fifths of what is left after the label, so the figures beside them read. */
-export function barColumns(columns: number): number {
-  return Math.max(6, Math.min(40, Math.floor((columns - LABEL_COLUMNS) * 0.42)))
-}
-
 export type ViewModel = {
-  detail: Detail
   context: {
     used: number
     window: number
@@ -408,9 +390,9 @@ export type ViewModel = {
   fits: boolean
 }
 
-/** Rows the expanded panel takes. */
+/** Rows the expanded terminal panel takes: context, legend, a gap, the rings' two lines, a gap, notice and buttons. */
 export function rowsOf(vm: Pick<ViewModel, 'showLegend' | 'showNotice'>): number {
-  return 1 + (vm.showLegend ? 1 : 0) + 3 + 1 + (vm.showNotice ? 1 : 0)
+  return 1 + (vm.showLegend ? 1 : 0) + 1 + 2 + (vm.showNotice ? 3 : 0)
 }
 
 export function buildView(
@@ -448,7 +430,6 @@ export function buildView(
   if (rowsOf(fit) > maxRows) fit.showNotice = false
 
   return {
-    detail: detailOf(columns),
     context,
     limits,
     cache,

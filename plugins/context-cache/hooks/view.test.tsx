@@ -50,6 +50,12 @@ async function start($: Engine, on: On) {
   await run($, 'cache-refresh')
 }
 
+/** Whether the drawing says `re`: in its text on the terminal, in an SVG's alt elsewhere. */
+async function shows(ui: { find: (q: { text?: RegExp }) => Promise<unknown>; findAll: (q: { type: string }) => Promise<{ props: Record<string, unknown> }[]> }, re: RegExp) {
+  if (await ui.find({ text: re })) return true
+  return (await ui.findAll({ type: 'Svg' })).some(el => re.test(String(el.props['alt'] ?? '')))
+}
+
 const band = (maxRows = 12) => ({
   component: 'AbovePrompt' as const,
   props: {
@@ -69,14 +75,14 @@ test('the chevron folds the panel to one line and opens it again', async ($, on)
 
     expect(await ui.find({ key: 'clear' })).toBeDefined()
     expect(await ui.find({ key: 'engine-band' })).toBeDefined()
-    expect(await ui.find({ text: /Session/ })).toBeDefined()
-    expect(await ui.find({ text: /Free/ })).toBeDefined()
+    expect(await ui.find({ key: 'compact' })).toBeDefined()
+    expect(await shows(ui, /34%/)).toBe(true)
 
     await ui.press({ key: 'collapse' })
     expect(await ui.find({ key: 'clear' })).toBeUndefined()
-    expect(await ui.find({ text: /Free/ })).toBeUndefined()
+    expect(await ui.find({ key: 'compact' })).toBeUndefined()
     expect(await ui.find({ key: 'collapse' })).toBeDefined()
-    expect(await ui.find({ text: /34%/ })).toBeDefined()
+    expect(await shows(ui, /34%/)).toBe(true)
 
     await ui.press({ key: 'collapse' })
     expect(await ui.find({ key: 'clear' })).toBeDefined()

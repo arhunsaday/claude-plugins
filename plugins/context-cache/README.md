@@ -1,23 +1,26 @@
 # context-cache
 
-A Claude Code mod that puts your context window, your usage limits and your prompt cache above the prompt. It is drawn with Claude Code's own elements and theme colours (no card or background), and folds to a single line with the chevron.
+A Claude Code mod that puts your context window, your usage limits and your prompt cache above the prompt: a context bar with its legend, a ring per limit (session, weekly, Fable) and one for the cache, a notice about what the next message costs, and Clear / Compact. No card or background; text follows your light or dark theme. Hover a ring on the desktop for its reset time and details. The chevron folds it to one line.
 
-> Adapted from [Christandoh/context-cache](https://github.com/Christandoh/context-cache) (commit `2afa4e8`) by Chris Tandoh, MIT licensed. See [LICENSE](LICENSE). Changes here: a theme-native layout in place of the fixed dark SVG card, a collapse chevron and `/cache-collapse`, and the band keeps whatever the host or other mods draw below it.
+> Adapted from [Christandoh/context-cache](https://github.com/Christandoh/context-cache) (commit `2afa4e8`) by Chris Tandoh, MIT licensed. See [LICENSE](LICENSE). Changes here: the ring layout at every width (upstream switched to bar columns above ~500 px), drawn without the card and theme-aware, a collapse chevron and `/cache-collapse`, hover details on the rings, and the band keeps whatever the host or other mods draw below it.
+
+Terminal, expanded:
 
 ```
-Context  ━━━━━━━━━━━━━━━━━━━──────────│───────  48% · 484k of 1M · auto-compact at 80%   ▾
-         ● System 20k  ● Tools 30k  ● Files 100k  ● Messages 334k  Free 516k
-Session  ━━━━━━━━━━━━━━━━━━━━━━━━──────────────  34% · resets in 2h 0m · 60% of window gone
-Weekly   ━━━━━━━━━━━━━━━━━──────────────────────  26% · resets Mon 2:00 pm · 43% of window gone
-Fable    ━━━━━─────────────────────────────────  10% · resets Mon 2:00 pm
-Cache    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  Warm · 59m left of 60m · hit 98%
-● Cache warm: next message reuses 484k from cache.                         [ Clear ] [ Compact ]
+Context 92k / 1M (9%) ━━━━━────────────────────────────│── 92%   ▾
+● System 6k  ● Tools 21k  ● Files 15k  ● Messages 50k  Free 908k
+
+◷ 9%              ▦ 14%             ✦ 2%              ♨ Warm
+  Time 12%          Time 14%          Time 14%          95% warm
+
+● Cache warm: next message reuses 92k from cache.
+[ Clear ] [ Compact ]
 ```
 
 Collapsed:
 
 ```
-Context 48% ━━━━━───│─ · Session 34% · Weekly 26% · Fable 10% · Cache warm 59m left   ▸
+Context 9% ━━──────│─   ◷ 9%  ▦ 14%  ✦ 2%  ♨ Warm 57m left   ▸
 ```
 
 ## Install
@@ -31,11 +34,11 @@ If you installed the upstream copy (`context-cache@chris-mods`), uninstall it fi
 ## Reading it
 
 - **Context**: tokens used out of the window, split into System, Tools, Files and Messages, with a tick where auto-compact fires.
-- **Session / Weekly / Fable**: the bright part is how much of the limit you've used; the faint part behind it is how much of the window's time has passed. Green when on pace, amber when you're well ahead of the time, red from 90%.
-- **Cache**: how much of the prompt cache's time-to-live is left (Warm above 25%, Cooling, Cold), with the last reply's cache hit rate.
+- **Session / Weekly / Fable** rings: the bright arc is how much of the limit you've used, the faint arc and the notch how much of the window's time has passed ("Time"). Each keeps its colour (green, blue, purple) while on pace, turns amber when you're well ahead of the time, red from 90%.
+- **Cache** ring: how much of the prompt cache's time-to-live is left (Warm above 25%, Cooling, Cold); hover for minutes left and the last hit rate.
 - The last row says what the next message will cost the cache, with **Clear** (`/clear`) and **Compact** beside it.
 
-Rows give way as the band narrows: the trailing detail first, then the legend; a band too short for the panel shows the one-line summary.
+Below about 360 px the legend and the ring captions drop; a band too short for the panel shows the one-line summary.
 
 ## Commands
 
@@ -62,7 +65,8 @@ The weekly and Fable figures rely on an endpoint Anthropic hasn't documented. If
 ## Files
 
 - `hooks/register.tsx`: data collection, commands, the band and the pane.
-- `hooks/model.ts`: the maths, thresholds, copy and layout decisions; no drawing.
-- `hooks/view.tsx`: the one layout, with text bars on the terminal and thin SVG bars elsewhere.
+- `hooks/model.ts`: the maths, thresholds and copy; no drawing.
+- `hooks/panel-svg.ts`: the desktop panel and collapsed line as SVG, measured with `hooks/metrics.ts`.
+- `hooks/view.tsx`: the terminal layout, and the desktop's SVG with the host's buttons and chevron.
 - `hooks/view.test.tsx`: `claude plugin test .` mounts the band on terminal and desktop.
 - `types/index.d.ts`: the mod's `$.state` contract.
