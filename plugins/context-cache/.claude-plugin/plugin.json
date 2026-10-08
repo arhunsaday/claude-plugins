@@ -1,7 +1,7 @@
 {
   "name": "context-cache",
-  "version": "0.1.5",
-  "description": "A panel above the prompt showing context usage, usage limits (session, weekly, Fable) and prompt-cache temperature, with Clear / Compact actions.",
+  "version": "0.2.0",
+  "description": "Context usage, usage limits (session, weekly, Fable) and prompt-cache warmth above the prompt, drawn in your theme, with Clear / Compact; collapses to one line.",
   "author": {
     "name": "Chris Tandoh"
   },
@@ -11,10 +11,8 @@
     "usage",
     "rate-limits",
     "prompt-cache",
-    "statusline",
-    "mod"
+    "mod",
+    "collapsible"
   ],
-  "repository": "https://github.com/Christandoh/context-cache",
-  "homepage": "https://github.com/Christandoh/context-cache#readme",
   "license": "MIT"
 }

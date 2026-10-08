@@ -12,27 +12,16 @@ import type {
   ContextCacheSnapshot,
 } from '../types'
 
-// ── Design tokens ──────────────────────────────────────────────────────────
+// ── Colours ────────────────────────────────────────────────────────────────
 
-export const TOKENS = {
-  card: '#222120',
-  border: '#34322e',
-  borderStrong: '#4a4741',
-  track: '#2f2d2a',
-  ringTrack: '#3a3835',
-  text: '#ece9e2',
-  text2: '#b9b5ab',
-  text3: '#8a867d',
-  text4: '#7d7970',
-  tick: '#ece9e2',
-  buttonText: '#1b1a18',
-} as const
+// Theme keys, so the panel takes the person's Claude Code theme on every surface.
+export type Tone = 'claude' | 'suggestion' | 'merged' | 'inactive' | 'success' | 'warning' | 'error'
 
-export const GROUP_COLORS: Record<ContextCacheGroup, string> = {
-  system: '#6f6b64',
-  tools: '#7050b8',
-  files: '#2f6bd6',
-  messages: '#c2562f',
+export const GROUP_COLORS: Record<ContextCacheGroup, Tone> = {
+  system: 'inactive',
+  tools: 'merged',
+  files: 'suggestion',
+  messages: 'claude',
 }
 
 export const GROUP_LABELS: Record<ContextCacheGroup, string> = {
@@ -44,26 +33,18 @@ export const GROUP_LABELS: Record<ContextCacheGroup, string> = {
 
 export const GROUPS: readonly ContextCacheGroup[] = ['system', 'tools', 'files', 'messages']
 
-export const LIMIT_COLORS: Record<ContextCacheLimitKind, { bright: string; dark: string }> = {
-  session: { bright: '#4fae6a', dark: '#2c5a3a' },
-  weekly: { bright: '#3b7be0', dark: '#2b4a80' },
-  fable: { bright: '#8a6fc0', dark: '#4a4160' },
-}
-export const AMBER = { bright: '#e0a84f', dark: '#6b5428' }
-export const RED = { bright: '#e5604f', dark: '#6b2f2a' }
-
 export const LIMIT_TITLES: Record<ContextCacheLimitKind, string> = {
-  session: 'Current session',
-  weekly: 'Weekly limits',
+  session: 'Session',
+  weekly: 'Weekly',
   fable: 'Fable',
 }
 
-export const CACHE_COLORS = {
-  warm: '#e8833a',
-  cooling: '#e0a84f',
-  cold: '#4f9be8',
-  empty: '#7d7970',
-} as const
+export const CACHE_COLORS: Record<CacheState, Tone> = {
+  warm: 'claude',
+  cooling: 'warning',
+  cold: 'suggestion',
+  empty: 'inactive',
+}
 
 export const HOUR = 3_600_000
 export const FIVE_HOURS = 5 * HOUR
@@ -272,10 +253,11 @@ export type LimitView = {
   usage: number | null
   time: number | null
   tone: LimitTone
-  bright: string
-  dark: string
+  color: Tone
   reset: string
 }
+
+const TONE_COLORS: Record<LimitTone, Tone> = { normal: 'success', amber: 'warning', red: 'error' }
 
 /** Percent of the window that has elapsed, from its reset time. */
 export function timePct(limit: ContextCacheLimit, now: number): number | null {
@@ -294,19 +276,17 @@ export function toneOf(usage: number, time: number | null): LimitTone {
 
 export function limitView(kind: ContextCacheLimitKind, limit: ContextCacheLimit | undefined, now: number): LimitView {
   if (!limit) {
-    const base = LIMIT_COLORS[kind]
-    return { kind, title: LIMIT_TITLES[kind], usage: null, time: null, tone: 'normal', ...base, reset: 'No reading yet' }
+    return { kind, title: LIMIT_TITLES[kind], usage: null, time: null, tone: 'normal', color: 'inactive', reset: 'No reading yet' }
   }
   const time = timePct(limit, now)
   const tone = toneOf(limit.usage, time)
-  const colors = tone === 'red' ? RED : tone === 'amber' ? AMBER : LIMIT_COLORS[kind]
   return {
     kind,
     title: LIMIT_TITLES[kind],
     usage: limit.usage,
     time,
     tone,
-    ...colors,
+    color: TONE_COLORS[tone],
     reset: fmtReset(limit.resetsAt, now),
   }
 }
@@ -320,7 +300,7 @@ export type CacheView = {
   /** Remaining TTL ÷ TTL, 0 to 1. */
   warmth: number
   remainingMs: number
-  color: string
+  color: Tone
   label: string
   hit: number | null
   detail: string
@@ -390,43 +370,47 @@ export function noticeText(cache: CacheView, context: ContextCacheContext | null
 // ── Layout ─────────────────────────────────────────────────────────────────
 
 /**
- * The design's four widths, in the cells the band is laid out in (≈ 8px a
- * cell): a ≈ 900px, b ≈ 620px (columns from ~500px), c ≈ 420px (rings),
- * d ≈ 320px (rings, no legend or detail lines).
+ * How much of each row's trailing text there is room for: everything, the
+ * figure and its reset, or the figure alone.
  */
-export type SizeClass = 'a' | 'b' | 'c' | 'd'
+export type Detail = 'full' | 'short' | 'none'
 
-export function sizeClassOf(columns: number): SizeClass {
-  if (columns >= 100) return 'a'
-  if (columns >= 62) return 'b'
-  if (columns >= 45) return 'c'
-  return 'd'
+export function detailOf(columns: number): Detail {
+  if (columns >= 90) return 'full'
+  if (columns >= 60) return 'short'
+  return 'none'
 }
 
-/** Rows the terminal card takes in each class (border included). */
-export function rowsFor(size: SizeClass, hasNotice: boolean): number {
-  const body = size === 'a' || size === 'b' ? 1 + 1 + 4 + (hasNotice ? 1 : 0) : size === 'c' ? 1 + 1 + 2 + (hasNotice ? 2 : 0) : 1 + 1 + (hasNotice ? 2 : 0)
-  return body + 2
-}
+/** Width of the label column ("Context", "Session", …) in cells. */
+export const LABEL_COLUMNS = 8
 
-// ── The whole view ─────────────────────────────────────────────────────────
+/** Cells the bars take: about two fifths of what is left after the label, so the figures beside them read. */
+export function barColumns(columns: number): number {
+  return Math.max(6, Math.min(40, Math.floor((columns - LABEL_COLUMNS) * 0.42)))
+}
 
 export type ViewModel = {
-  size: SizeClass
+  detail: Detail
   context: {
     used: number
     window: number
-    usedLabel: string
+    usedPct: number
     compactPct: number | null
-    rightLabel: string
-    segments: { group: ContextCacheGroup; tokens: number; color: string; label: string }[]
+    segments: { group: ContextCacheGroup; tokens: number; color: Tone; label: string }[]
     free: number
   } | null
   limits: LimitView[]
   cache: CacheView
   notice: string
   showLegend: boolean
-  showDetail: boolean
+  showNotice: boolean
+  /** False when the band has too few rows for the expanded panel: draw the one-line summary instead. */
+  fits: boolean
+}
+
+/** Rows the expanded panel takes. */
+export function rowsOf(vm: Pick<ViewModel, 'showLegend' | 'showNotice'>): number {
+  return 1 + (vm.showLegend ? 1 : 0) + 3 + 1 + (vm.showNotice ? 1 : 0)
 }
 
 export function buildView(
@@ -435,76 +419,41 @@ export function buildView(
   columns: number,
   maxRows: number,
 ): ViewModel {
-  let size = sizeClassOf(columns)
   const cache = cacheView(snap.cache, now)
   const notice = noticeText(cache, snap.context, snap.cache.ttlMs)
-  // Fall back to a shorter layout when the band has fewer rows than it needs.
-  while (size !== 'd' && rowsFor(size, true) > maxRows) {
-    size = size === 'a' ? 'c' : size === 'b' ? 'c' : 'd'
-  }
 
   const ctx = snap.context
   const context = ctx
-    ? (() => {
-        const compactPct = ctx.autoCompactAt === null ? null : pct((ctx.autoCompactAt / ctx.window) * 100)
-        const wide = size === 'a' || size === 'b'
-        const rightLabel =
-          compactPct === null
-            ? `${pct((ctx.used / ctx.window) * 100)}%`
-            : wide
-              ? `Compact at ${compactPct}%`
-              : `${compactPct}%`
-        return {
-          used: ctx.used,
-          window: ctx.window,
-          usedLabel: `${fmtTokens(ctx.used)} / ${fmtTokens(ctx.window)} (${pct((ctx.used / ctx.window) * 100)}%)`,
-          compactPct,
-          rightLabel,
-          segments: GROUPS.map(g => ({
-            group: g,
-            tokens: ctx.parts[g],
-            color: GROUP_COLORS[g],
-            label: GROUP_LABELS[g],
-          })),
-          free: Math.max(0, ctx.window - ctx.used),
-        }
-      })()
+    ? {
+        used: ctx.used,
+        window: ctx.window,
+        usedPct: pct((ctx.used / ctx.window) * 100),
+        compactPct: ctx.autoCompactAt === null ? null : pct((ctx.autoCompactAt / ctx.window) * 100),
+        segments: GROUPS.map(g => ({
+          group: g,
+          tokens: ctx.parts[g],
+          color: GROUP_COLORS[g],
+          label: GROUP_LABELS[g],
+        })),
+        free: Math.max(0, ctx.window - ctx.used),
+      }
     : null
 
   const byKind = (k: ContextCacheLimitKind) => snap.limits.find(l => l.kind === k)
   const limits = (['session', 'weekly', 'fable'] as const).map(k => limitView(k, byKind(k), now))
 
+  // Drop the legend, then the notice row, when the band is short of rows.
+  const fit = { showLegend: context !== null && columns >= 50, showNotice: true }
+  if (rowsOf(fit) > maxRows) fit.showLegend = false
+  if (rowsOf(fit) > maxRows) fit.showNotice = false
+
   return {
-    size,
+    detail: detailOf(columns),
     context,
     limits,
     cache,
     notice,
-    showLegend: size !== 'd',
-    showDetail: size === 'a' || size === 'b',
+    ...fit,
+    fits: rowsOf(fit) <= maxRows,
   }
-}
-
-// ── Colour helpers ─────────────────────────────────────────────────────────
-
-function hexToRgb(hex: string): [number, number, number] {
-  const h = hex.replace('#', '')
-  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
-}
-
-function rgbToHex([r, g, b]: [number, number, number]): string {
-  return `#${[r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('')}`
-}
-
-/** Mixes `a` toward `b` by `t` (0 → a, 1 → b). */
-export function mix(a: string, b: string, t: number): string {
-  const x = hexToRgb(a)
-  const y = hexToRgb(b)
-  return rgbToHex([x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t])
-}
-
-/** The temperature gradient: blue → amber (50%) → orange. */
-export function tempColorAt(x: number): string {
-  const t = Math.max(0, Math.min(1, x))
-  return t < 0.5 ? mix(CACHE_COLORS.cold, CACHE_COLORS.cooling, t / 0.5) : mix(CACHE_COLORS.cooling, CACHE_COLORS.warm, (t - 0.5) / 0.5)
 }

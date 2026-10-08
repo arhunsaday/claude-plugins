@@ -34,11 +34,8 @@ import { renderDesktop, renderTerminal, type Actions } from './view'
 const snapshotAtom = atom({ plugin: 'context-cache', key: 'snapshot' } as const, null)
 const hiddenAtom = atom({ plugin: 'context-cache', key: 'isHidden' } as const, false)
 const nowAtom = atom({ plugin: 'context-cache', key: 'now' } as const, 0)
-// Desktop and mobile draw the design in CSS px, but the band is measured in
-// cells; this is the conversion. 8 fits the desktop app's default font;
-// /cache scale <px> adjusts it and the value is kept across sessions.
-const pxPerCellAtom = atom({ plugin: 'context-cache', key: 'pxPerCell' } as const, 8)
-const DEFAULT_PX_PER_CELL = 8
+// Folded to one line (the chevron, /cache-collapse); kept across sessions in $.store.
+const collapsedAtom = atom({ plugin: 'context-cache', key: 'isCollapsed' } as const, false)
 
 const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
 // The account endpoint answers 429 to anyone who leans on it; the status-line
@@ -112,7 +109,7 @@ async function statusReport($: EngineInterface): Promise<string> {
   } catch {
     surfaces = []
   }
-  const [snap, hidden, pxPerCell] = await Promise.all([read($, snapshotAtom), read($, hiddenAtom), read($, pxPerCellAtom)])
+  const [snap, hidden, isCollapsed] = await Promise.all([read($, snapshotAtom), read($, hiddenAtom), read($, collapsedAtom)])
   const drawn = Object.entries(draws).map(([k, n]) => `${k} ×${n}`).join(', ') || 'nothing yet'
   const a = lastAccount
   const account = a
@@ -124,7 +121,7 @@ async function statusReport($: EngineInterface): Promise<string> {
     `Surfaces attached now: ${surfaces.length ? surfaces.join(', ') : 'none'}`,
     `Clients that attached since load: ${attached.length ? attached.join(', ') : 'none seen'}`,
     `Draw requests received: ${drawn}`,
-    `Panel hidden: ${hidden ? 'yes' : 'no'}; px per cell: ${pxPerCell} (/cache scale <px> changes it)`,
+    `Panel hidden: ${hidden ? 'yes' : 'no'}; collapsed: ${isCollapsed ? 'yes' : 'no'}`,
     `Context: ${snap?.context ? `${snap.context.used} / ${snap.context.window}` : 'no reading'}`,
     `Limits: ${snap?.limits.length ? snap.limits.map(l => `${l.kind} ${l.usage}%`).join(', ') : 'none'} (source: ${snap?.limitsSource ?? 'none'})`,
     `Account usage request: ${account}`,
@@ -135,7 +132,7 @@ async function statusReport($: EngineInterface): Promise<string> {
   try {
     await $.fs.write(
       DIAG_FILE,
-      JSON.stringify({ at: await $.clock.now(), surfaces, attached, draws, hidden, pxPerCell, account: lastAccount, snap }, null, 2),
+      JSON.stringify({ at: await $.clock.now(), surfaces, attached, draws, hidden, isCollapsed, account: lastAccount, snap }, null, 2),
     )
   } catch {
     // diagnostics only
@@ -323,7 +320,7 @@ const COMMANDS = [
   { name: 'cache-status', description: 'Context & cache panel: where each figure comes from (surfaces, draws, the account usage request, Fable)' },
   { name: 'cache-pane', description: 'Context & cache panel: open it as a pane (the way it shows on mobile)' },
   { name: 'cache-refresh', description: 'Context & cache panel: re-read usage now' },
-  { name: 'cache-scale', description: 'Context & cache panel: px per cell the desktop draws at (default 8); a number sets it, none steps it', argumentHint: '[px]' },
+  { name: 'cache-collapse', description: 'Context & cache panel: fold it to one line, or open it again' },
 ] as const
 
 async function hasMobile($: EngineInterface): Promise<boolean> {
@@ -334,16 +331,6 @@ async function hasMobile($: EngineInterface): Promise<boolean> {
   }
 }
 
-/** The card's inner width in CSS px on a remote surface: the band's cells × px per cell, less the border. */
-async function widthPx($: EngineInterface, columns: number): Promise<number> {
-  return columns * (await read($, pxPerCellAtom)) - 2
-}
-
-/** The size classes are set in the design's cells (8px each): a px width as that many. */
-function designCells(px: number): number {
-  return px / DEFAULT_PX_PER_CELL
-}
-
 /** The view model for a drawing, or null while hidden or before any reading. */
 async function panelModel($: EngineInterface, columns: number, maxRows: number): Promise<ViewModel | null> {
   const [snap, hidden, tick] = await Promise.all([read($, snapshotAtom), read($, hiddenAtom), read($, nowAtom)])
@@ -351,9 +338,17 @@ async function panelModel($: EngineInterface, columns: number, maxRows: number):
   return buildView(snap, Math.max(tick, snap.updatedAt), columns, maxRows)
 }
 
-/** Clear and Compact. Neither hides the notice row: it stays on whatever the cache holds. */
-function actionsFor($: EngineInterface, isWorking: boolean): Actions {
+async function toggleCollapsed($: EngineInterface): Promise<boolean> {
+  const isCollapsed = !(await read($, collapsedAtom))
+  await update($, collapsedAtom, () => isCollapsed)
+  await $.store.set('isCollapsed', isCollapsed)
+  return isCollapsed
+}
+
+/** Clear, Compact and, in the band, the fold chevron. Neither Clear nor Compact hides the notice row. */
+function actionsFor($: EngineInterface, isWorking: boolean, canFold: boolean): Actions {
   return {
+    toggle: canFold ? () => void toggleCollapsed($) : undefined,
     clear: async () => {
       if (isWorking) $.ui.toast('Clear runs once the current turn finishes.')
       try {
@@ -386,8 +381,7 @@ export const register: Register = on => {
     cwd = e.cwd
     // One command each: the desktop composer drops anything typed after a slash command's name.
     for (const c of COMMANDS) await $.command.register(c)
-    const storedPx = await $.store.get('pxPerCell')
-    if (typeof storedPx === 'number' && storedPx > 0) await update($, pxPerCellAtom, () => storedPx)
+    if ((await $.store.get('isCollapsed')) === true) await update($, collapsedAtom, () => true)
     const initial = await current($)
     await update($, snapshotAtom, prev => prev ?? initial)
     void refresh($, true)
@@ -497,7 +491,7 @@ export const register: Register = on => {
     return result
   })
 
-  // ── /cache, /cache-status, /cache-pane, /cache-refresh, /cache-scale ────
+  // ── /cache, /cache-status, /cache-pane, /cache-refresh, /cache-collapse ─
 
   on('command.run', { command: 'cache-status' }, async $ => ({ text: await statusReport($) }))
 
@@ -506,14 +500,9 @@ export const register: Register = on => {
     return { text: 'Context & cache panel refreshed.' }
   })
 
-  on('command.run', { command: 'cache-scale' }, async ($, e) => {
-    const was = await read($, pxPerCellAtom)
-    const typed = Number(e.args.trim())
-    // No number typed (or none delivered): step through 7 … 9.5 and round.
-    const n = Number.isFinite(typed) && typed > 0 ? typed : was >= 9.5 ? 7 : Math.round((was + 0.5) * 2) / 2
-    await $.store.set('pxPerCell', n)
-    await update($, pxPerCellAtom, () => n)
-    return { text: `Desktop now draws at ${n} px per cell (was ${was}). Run it again to step up; /cache-scale <px> sets it outright.` }
+  on('command.run', { command: 'cache-collapse' }, async $ => {
+    const isCollapsed = await toggleCollapsed($)
+    return { text: isCollapsed ? 'Context & cache panel collapsed to one line.' : 'Context & cache panel expanded.' }
   })
 
   on('command.run', { command: 'cache-pane' }, async $ => {
@@ -552,19 +541,26 @@ export const register: Register = on => {
     noteDraw('AbovePrompt', e.surface)
     if (e.props.hasSurvey) return next(e)
     if (e.props.view.agentId !== undefined) return next(e)
+    if (e.surface !== 'terminal' && e.surface !== 'desktop' && e.surface !== 'vscode') return next(e)
+    const vm = await panelModel($, e.props.bodyColumns, e.props.maxRows)
+    if (!vm) return next(e)
+    const isCollapsed = await read($, collapsedAtom)
+    const actions = actionsFor($, e.props.isWorking, true)
     const E = $.ui.resolve(e)
-    if (e.surface === 'terminal') {
-      const vm = await panelModel($, e.props.bodyColumns, e.props.maxRows)
-      if (!vm) return next(e)
-      return renderTerminal(E as Parameters<typeof renderTerminal>[0], vm, e.props.bodyColumns, actionsFor($, e.props.isWorking))
-    }
-    if (e.surface === 'desktop' || e.surface === 'vscode') {
-      const px = await widthPx($, e.props.bodyColumns)
-      const vm = await panelModel($, designCells(px), e.props.maxRows)
-      if (!vm) return next(e)
-      return renderDesktop(E as Parameters<typeof renderDesktop>[0], vm, px, actionsFor($, e.props.isWorking))
-    }
-    return next(e)
+    const mine =
+      e.surface === 'terminal'
+        ? renderTerminal(E as Parameters<typeof renderTerminal>[0], vm, e.props.bodyColumns, actions, isCollapsed)
+        : renderDesktop(E as Parameters<typeof renderDesktop>[0], vm, e.props.bodyColumns, actions, isCollapsed)
+    // What the host and the plugins after this one draw here stays, under the panel.
+    const below = await next(e)
+    if (!below) return mine
+    const { Box } = E
+    return (
+      <Box flexDirection="column" gap={1}>
+        {mine}
+        {below}
+      </Box>
+    )
   })
 
   // ── The same panel as a pane (every surface; the phone's way to see it) ─
@@ -574,14 +570,11 @@ export const register: Register = on => {
     const E = $.ui.resolve(e)
     const { Text } = E
     const rows = Math.max(e.props.scroll.bodyRows, 12)
-    if (e.surface === 'terminal') {
-      const vm = await panelModel($, e.props.bodyColumns, rows)
-      if (!vm) return <Text dimColor>Reading usage…</Text>
-      return renderTerminal(E as Parameters<typeof renderTerminal>[0], vm, e.props.bodyColumns, actionsFor($, false))
-    }
-    const px = await widthPx($, e.props.bodyColumns)
-    const vm = await panelModel($, designCells(px), rows)
+    const vm = await panelModel($, e.props.bodyColumns, rows)
     if (!vm) return <Text dimColor>Reading usage…</Text>
-    return renderDesktop(E as Parameters<typeof renderDesktop>[0], vm, px, actionsFor($, false))
+    const actions = actionsFor($, false, false)
+    return e.surface === 'terminal'
+      ? renderTerminal(E as Parameters<typeof renderTerminal>[0], vm, e.props.bodyColumns, actions, false)
+      : renderDesktop(E as Parameters<typeof renderDesktop>[0], vm, e.props.bodyColumns, actions, false)
   })
 }

@@ -57,8 +57,8 @@ declare module 'claude-code' {
       isHidden: boolean
       /** The clock, written once a second so the countdown redraws. */
       now: number
-      /** Desktop/mobile: CSS px per host cell, to draw the design at its real px size (/cache scale). */
-      pxPerCell: number
+      /** Folded to one summary line (the chevron, /cache-collapse); mirrored to $.store across sessions. */
+      isCollapsed: boolean
     }
   }
 }

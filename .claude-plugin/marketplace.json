@@ -13,7 +13,7 @@
     {
       "name": "context-cache",
       "source": "./plugins/context-cache",
-      "description": "Context usage, usage limits and prompt-cache warmth above the prompt, with Clear and Compact",
+      "description": "Context usage, usage limits and prompt-cache warmth above the prompt, drawn in your theme; collapses to one line",
       "category": "mod",
       "tags": [
         "mod",
