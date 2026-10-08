@@ -1,0 +1,21 @@
+{
+  "name": "blast-radius",
+  "version": "1.0.0",
+  "description": "Holds destructive commands (rm -r, force pushes, git resets and cleans, branch deletes, migrations, SQL drops) and shows exactly what they would destroy before they run.",
+  "author": {
+    "name": "Arhun Saday",
+    "url": "https://arhun.fr"
+  },
+  "license": "MIT",
+  "keywords": ["mod", "safety", "guard", "git", "rm"],
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "timeoutSeconds": {
+      "type": "number",
+      "title": "Auto-cancel after (seconds)",
+      "description": "How long a held command waits for an answer before it is cancelled. 0 waits forever.",
+      "default": 60,
+      "min": 0
+    }
+  }
+}
