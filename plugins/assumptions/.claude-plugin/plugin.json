@@ -1,0 +1,12 @@
+{
+  "name": "assumptions",
+  "version": "1.0.0",
+  "description": "Claude logs the small guesses it makes without asking; once the turn ends a strip lists them, you mark each right or wrong, and a wrong one sends Claude a prompt to fix just that part",
+  "author": {
+    "name": "Arhun Saday",
+    "url": "https://arhun.fr"
+  },
+  "license": "MIT",
+  "keywords": ["mod", "assumptions", "review", "collapsible"],
+  "types": "./types/index.d.ts"
+}

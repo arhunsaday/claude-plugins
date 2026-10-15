@@ -11,6 +11,17 @@
   },
   "plugins": [
     {
+      "name": "assumptions",
+      "source": "./plugins/assumptions",
+      "description": "Lists the small guesses Claude made without asking; mark each right or wrong, and a wrong one gets fixed on its own",
+      "category": "mod",
+      "tags": [
+        "mod",
+        "assumptions",
+        "review"
+      ]
+    },
+    {
       "name": "blast-radius",
       "source": "./plugins/blast-radius",
       "description": "Holds destructive commands (rm -r, force pushes, git resets and cleans, branch deletes, migrations, SQL drops) and shows what they would destroy",
