@@ -1,6 +1,6 @@
 {
   "name": "cache-warm",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Prompt-cache warmth above the prompt: a countdown bar, hit rate per reply, what the cache saved, lapse warnings and keep-warm pings (by hand or automatic), with a Cache button to show or hide it",
   "author": {
     "name": "Arhun Saday",

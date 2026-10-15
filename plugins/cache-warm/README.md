@@ -24,11 +24,13 @@ Cooling (the last quarter of the TTL):
 [ Keep warm ] [ Auto off ]
 ```
 
-Collapsed:
+Collapsed, the way it starts:
 
 ```
-♨ Cache · Warm · 42m left of 1h ━━━━━━━━━─── 96% hit                    ▸
+◕ Cache · Warm · 42m left of 1h 96% hit                                 ▸
 ```
+
+The folded row leads with a warmth ring that empties clockwise as the cache cools. On the desktop it is drawn as a ring; hover it for time left, the last reply, the session's savings and the keep-warm state. The terminal steps through `● ◕ ◑ ◔ ○`.
 
 ## What it shows
 
