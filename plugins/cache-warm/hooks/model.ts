@@ -210,28 +210,3 @@ export function ttlFromTranscript(text: string): number | null {
   }
   return null
 }
-
-/** Everything the folded row leaves out, one line each: the desktop ring's hover text. */
-export function detailsOf(vm: ViewModel): string {
-  const head =
-    vm.state === 'empty'
-      ? 'Prompt cache empty: nothing cached yet'
-      : vm.state === 'cold'
-        ? `Prompt cache cold: ${vm.detail}`
-        : `Prompt cache ${vm.label.toLowerCase()}: ${vm.detail}${vm.isTtlKnown ? '' : ' (TTL assumed)'}`
-  const lines = [vm.isPinging ? `${head}, keep-warm ping on its way` : head]
-  if (vm.notice) lines.push(vm.notice)
-  if (vm.last) {
-    lines.push(
-      `Last reply: ${vm.lastHit === null ? '—' : pct(vm.lastHit)} hit, ${fmtTokens(vm.last.read)} read, ${fmtTokens(vm.last.written)} written`,
-    )
-  }
-  if (vm.sessionHit !== null) {
-    const saved = vm.saved === null ? '' : vm.saved >= 0 ? `, input −${pct(vm.saved)}` : `, input +${pct(-vm.saved)}`
-    lines.push(`Session: ${pct(vm.sessionHit)} hit, ${fmtTokens(vm.totals.read)} read${saved}${vm.lapses ? `, ${vm.lapses} lapsed` : ''}`)
-  }
-  const next = vm.nextPingMs === null ? '' : `, next ping in ${fmtSpan(vm.nextPingMs)}`
-  const pings = vm.pings ? `, ${vm.pings} ${vm.pings === 1 ? 'ping' : 'pings'}` : ''
-  lines.push(`Keep-warm: ${vm.isAuto ? 'auto' : 'off'}${next}${pings}`)
-  return lines.join('\n')
-}

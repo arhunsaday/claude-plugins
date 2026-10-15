@@ -41,9 +41,7 @@ async function start($: Engine, on: On, isExpanded = true): Promise<Started> {
   on('turn.complete', async (_$, e) => ({ text: e.answer, usage: e.usage }))
   // The engine's own band: an empty row the mod must keep under it.
   on('ui.render', async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
-    // the footer's mode labels, as the engine joins them
-    if (e.component === 'SessionMode') return <Text key="engine-modes">{(e.props as { modes: readonly string[] }).modes.join(' & ')}</Text>
+    const { Box } = $.ui.resolve(e)
     return <Box key="engine-band" />
   })
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
@@ -234,79 +232,4 @@ test('savings on other models price reads at 0.1x', async ($, on) => {
   await start($, on)
   await reply($, 380_000, 20_000)
   expect(JSON.stringify(await run($, 'cache-warm-status'))).toContain('−81%')
-})
-
-test('the folded row leads with a ring that empties as the cache cools', async ($, on) => {
-  const s = await start($, on, false)
-  await reply($, 380_000, 20_000)
-  const ui = await $.ui.mount({ plugin: 'cache-warm', surface: 'terminal', ...band() })
-  expect(await ui.find({ text: /^●$/ })).toBeDefined()
-  await s.clock.advance(30 * MIN)
-  expect(await ui.find({ text: /^◑$/ })).toBeDefined()
-  await s.clock.advance(31 * MIN)
-  expect(await ui.find({ text: /^○$/ })).toBeDefined()
-  await ui.unmount()
-})
-
-test('the desktop ring is an SVG whose hover text holds the details', async ($, on) => {
-  const s = await start($, on, false)
-  await reply($, 380_000, 20_000)
-  await s.clock.advance(20 * MIN)
-  const ui = await $.ui.mount({ plugin: 'cache-warm', surface: 'desktop', ...band() })
-  const ring = (await ui.findAll({ type: 'Svg' })).find(el => String(el.props['alt'] ?? '').startsWith('Prompt cache'))
-  expect(ring).toBeDefined()
-  expect(ring!.props['isInteractive']).toBe(true)
-  const alt = String(ring!.props['alt'])
-  expect(alt).toContain('40m left of 1h')
-  expect(alt).toContain('Last reply: 95% hit')
-  expect(alt).toContain('Keep-warm: off')
-  const source = String(ring!.props['source'])
-  expect(source).toContain('<title>')
-  // two thirds of the TTL left: the arc ends past 6 o'clock
-  expect(source).toContain(' 0 1 1 ')
-  await ui.unmount()
-})
-
-const footerAt = (isFullscreen: boolean) => ({
-  component: 'SessionMode' as const,
-  props: { modes: ['focus'] },
-  viewport: { columns: 100, rows: 40, isFullscreen },
-})
-
-test('the footer draws the warmth ring beside the Cache button, with the details on hover', async ($, on) => {
-  const s = await start($, on)
-  await run($, 'cache-warm')
-  await reply($, 380_000, 20_000)
-  await s.clock.advance(20 * MIN)
-  const ui = await $.ui.mount({ plugin: 'cache-warm', surface: 'desktop', ...footerAt(true) } as never)
-  expect(await ui.find({ key: 'cache-toggle' })).toBeDefined()
-  const ring = (await ui.findAll({ type: 'Svg' })).find(el => String(el.props['alt'] ?? '').startsWith('Prompt cache'))
-  expect(ring).toBeDefined()
-  expect(ring!.props['isInteractive']).toBe(true)
-  expect(String(ring!.props['alt'])).toContain('40m left of 1h')
-  // the band is hidden, yet the ring keeps counting down
-  await s.clock.advance(20 * MIN)
-  const later = (await ui.findAll({ type: 'Svg' })).find(el => String(el.props['alt'] ?? '').startsWith('Prompt cache'))
-  expect(String(later!.props['alt'])).toContain('20m left of 1h')
-  expect(await ui.find({ text: /focus/ })).toBeDefined()
-  await ui.unmount()
-})
-
-test('a fullscreen terminal footer draws the ring glyph beside the button', async ($, on) => {
-  await start($, on)
-  await reply($, 380_000, 20_000)
-  const ui = await $.ui.mount({ plugin: 'cache-warm', surface: 'terminal', ...footerAt(true) } as never)
-  expect(await ui.find({ text: /^●$/ })).toBeDefined()
-  expect(await ui.find({ key: 'cache-toggle' })).toBeDefined()
-  await ui.unmount()
-})
-
-test('a terminal outside fullscreen adds the ring and time left to the mode labels', async ($, on) => {
-  const s = await start($, on)
-  await reply($, 380_000, 20_000)
-  await s.clock.advance(30 * MIN)
-  const ui = await $.ui.mount({ plugin: 'cache-warm', surface: 'terminal', ...footerAt(false) } as never)
-  expect(await ui.find({ text: /focus & ◑ cache 30m/ })).toBeDefined()
-  expect(await ui.find({ key: 'cache-toggle' })).toBeUndefined()
-  await ui.unmount()
 })

@@ -24,13 +24,11 @@ Cooling (the last quarter of the TTL):
 [ Keep warm ] [ Auto off ]
 ```
 
-Collapsed, the way it starts:
+Collapsed:
 
 ```
-◕ Cache · Warm · 42m left of 1h 96% hit                                 ▸
+♨ Cache · Warm · 42m left of 1h ━━━━━━━━━─── 96% hit                    ▸
 ```
-
-The folded row leads with a warmth ring that empties clockwise as the cache cools. On the desktop it is drawn as a ring; hover it for time left, the last reply, the session's savings and the keep-warm state. The terminal steps through `● ◕ ◑ ◔ ○`.
 
 ## What it shows
 
@@ -57,10 +55,6 @@ Without Auto, a toast says when the cache starts cooling and when it went cold. 
 | `/cache-warm-auto` | Turn automatic keep-warm pings on or off |
 | `/cache-warm-collapse` | Fold the band to one line, or open it again (the chevron) |
 | `/cache-warm-status` | Every figure, the TTL and where it came from, and the keep-warm settings |
-
-## In the prompt footer
-
-Beside the model picker and the usage rings, the same warmth ring sits in front of the **Cache** button, and keeps counting down while the band is hidden. On the desktop, hover it for the details. In a fullscreen terminal it is the `● ◕ ◑ ◔ ○` glyph; outside fullscreen, where the footer has no buttons, it joins the dim mode labels as `◕ cache 42m`.
 
 The band, the fold and Auto are remembered across sessions. The ping runs on your main model with its thinking settings, so a little output is billed on top of the read. The **Cache** button shows on the desktop and in a fullscreen terminal; it is dim while the band is hidden or nothing is cached.
 

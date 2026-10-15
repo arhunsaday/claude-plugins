@@ -4,7 +4,7 @@
 
 import type { Elements, RenderElement } from 'claude-code'
 
-import { detailsOf, fmtSpan, fmtTokens, pct, sparkOf, type Tone, type ViewModel } from './model'
+import { fmtSpan, fmtTokens, pct, sparkOf, type Tone, type ViewModel } from './model'
 
 export type Actions = {
   ping: () => void | Promise<void>
@@ -25,12 +25,11 @@ const MAX_PX = 520
 
 const isLive = (vm: ViewModel) => vm.state === 'warm' || vm.state === 'cooling'
 
-/** The header's leading mark: the state glyph, or in the folded row the warmth ring. */
-function header(E: TermEls, vm: ViewModel, chevron: RenderElement | null, tail: RenderElement | null, lead?: RenderElement) {
+function header(E: TermEls, vm: ViewModel, chevron: RenderElement | null, tail: RenderElement | null) {
   const { Box, Text } = E
   return (
-    <Box key="header" flexDirection="row" columnGap={1} alignItems="center">
-      {lead ?? <Text color={vm.tone}>{vm.isPinging ? '↻' : vm.glyph}</Text>}
+    <Box key="header" flexDirection="row" columnGap={1}>
+      <Text color={vm.tone}>{vm.isPinging ? '↻' : vm.glyph}</Text>
       <Box flexShrink={1} minWidth={0}>
         <Text wrap="truncate">
           <Text bold>Cache</Text>
@@ -159,32 +158,22 @@ function barText(E: TermEls, vm: ViewModel, n: number) {
   )
 }
 
-/** The folded row's ring on the terminal: a circle that empties a quarter at a time as the cache cools. */
-export function ringGlyph(vm: ViewModel): string {
-  if (vm.isPinging) return '↻'
-  if (vm.warmth <= 0) return '○'
-  return vm.warmth > 0.875 ? '●' : vm.warmth > 0.625 ? '◕' : vm.warmth > 0.375 ? '◑' : '◔'
-}
-
-function hitTail(E: TermEls, vm: ViewModel) {
-  const { Text } = E
-  return vm.state === 'empty' || vm.lastHit === null ? null : <Text dimColor>{`${pct(vm.lastHit)} hit`}</Text>
-}
-
 export function renderTerminal(E: TermEls, vm: ViewModel, columns: number, actions: Actions, isCollapsed: boolean): RenderElement {
   const { Box, Text, Button } = E
   const cols = Math.max(24, Math.min(MAX_COLUMNS, columns))
   const chevron = <Button key="collapse" plain dimColor label={isCollapsed ? '▸' : '▾'} onPress={actions.toggle} />
 
   if (isCollapsed || vm.state === 'empty') {
-    const ring = (
-      <Text key="ring" color={vm.tone}>
-        {ringGlyph(vm)}
-      </Text>
-    )
+    const tail =
+      vm.state === 'empty' ? null : (
+        <Box flexDirection="row" columnGap={1} flexShrink={0}>
+          {cols >= 56 ? barText(E, vm, 12) : null}
+          {vm.lastHit === null ? null : <Text dimColor>{`${pct(vm.lastHit)} hit`}</Text>}
+        </Box>
+      )
     return (
       <Box key="cache-warm" flexDirection="column" width={cols}>
-        {header(E, vm, vm.state === 'empty' ? null : chevron, hitTail(E, vm), ring)}
+        {header(E, vm, vm.state === 'empty' ? null : chevron, tail)}
       </Box>
     )
   }
@@ -227,35 +216,6 @@ export function barSvg(warmth: number, tone: Tone, width: number): string {
   )
 }
 
-const RING = 16
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
-/** The folded row's ring on the desktop: a track, the warmth drawn clockwise from 12 o'clock, the details as its hover title. */
-export function ringSvg(warmth: number, tone: Tone, title: string): string {
-  const c = RING / 2
-  const w = 2.5
-  const r = c - w / 2 - 0.5
-  const [light, dark] = HEX[tone]
-  const deg = Math.max(0, Math.min(1, warmth)) * 360
-  const at = (a: number) => {
-    const rad = ((a - 90) * Math.PI) / 180
-    return `${(c + r * Math.cos(rad)).toFixed(2)} ${(c + r * Math.sin(rad)).toFixed(2)}`
-  }
-  const fill =
-    deg <= 0
-      ? ''
-      : deg >= 359.99
-        ? `<circle class="f" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${w}"/>`
-        : `<path class="f" d="M${at(0)} A${r} ${r} 0 ${deg > 180 ? 1 : 0} 1 ${at(deg)}" fill="none" stroke-width="${w}" stroke-linecap="round"/>`
-  return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${RING}" height="${RING}" viewBox="0 0 ${RING} ${RING}">` +
-    `<style>.t{stroke:#3D3D3A}.f{stroke:${dark}}@media (prefers-color-scheme:light){.t{stroke:#E8E6DC}.f{stroke:${light}}}</style>` +
-    `<title>${esc(title)}</title>` +
-    `<rect width="${RING}" height="${RING}" fill="transparent"/>` +
-    `<circle class="t" cx="${c}" cy="${c}" r="${r}" fill="none" stroke-width="${w}"/>${fill}</svg>`
-  )
-}
-
 // Lucide chevron-up (fold) / chevron-down (open), drawn as plan-progress and context-cache draw theirs: the picture
 // centred in its cell and a blank Button over it, so the host draws its own hover and focus ring and takes the press.
 const CHIP = 16
@@ -281,15 +241,16 @@ export function renderDesktop(E: DeskEls, vm: ViewModel, columns: number, action
   )
 
   if (isCollapsed || vm.state === 'empty') {
-    const details = detailsOf(vm)
-    const ring = (
-      <Box key="ring-cell" width={2} height={1} flexShrink={0} justifyContent="center" alignItems="center">
-        <Svg key="ring" source={ringSvg(vm.warmth, vm.tone, details)} alt={details} width={RING} height={RING} isInteractive />
-      </Box>
-    )
+    const tail =
+      vm.state === 'empty' ? null : (
+        <Box flexDirection="row" columnGap={1} alignItems="center" flexShrink={0}>
+          {bar('bar-mini', 96)}
+          {vm.lastHit === null ? null : <T.Text dimColor>{`${pct(vm.lastHit)} hit`}</T.Text>}
+        </Box>
+      )
     return (
       <Box key="cache-warm" flexDirection="column">
-        {header(T, vm, vm.state === 'empty' ? null : chevron, hitTail(T, vm), ring)}
+        {header(T, vm, vm.state === 'empty' ? null : chevron, tail)}
       </Box>
     )
   }
@@ -306,27 +267,4 @@ export function renderDesktop(E: DeskEls, vm: ViewModel, columns: number, action
       {actionsRow(T, vm, actions)}
     </Box>
   )
-}
-
-// ── The prompt footer, beside the model picker and the usage rings ─────────
-
-/** The terminal's dim mode label outside fullscreen: the ring glyph and the time left. */
-export function modeLabel(vm: ViewModel): string {
-  const left = vm.state === 'warm' || vm.state === 'cooling' ? fmtSpan(vm.remainingMs) : vm.state === 'cold' ? 'cold' : 'empty'
-  return `${ringGlyph(vm)} cache ${left}`
-}
-
-export function footerRingTerminal(E: TermEls, vm: ViewModel): RenderElement {
-  const { Text } = E
-  return (
-    <Text key="footer-ring" color={vm.tone}>
-      {ringGlyph(vm)}
-    </Text>
-  )
-}
-
-export function footerRingDesktop(E: DeskEls, vm: ViewModel): RenderElement {
-  const { Svg } = E
-  const details = detailsOf(vm)
-  return <Svg key="footer-ring" source={ringSvg(vm.warmth, vm.tone, details)} alt={details} width={RING} height={RING} isInteractive />
 }

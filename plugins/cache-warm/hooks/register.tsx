@@ -33,7 +33,7 @@ import {
   warmthOf,
   withReply,
 } from './model'
-import { footerRingDesktop, footerRingTerminal, modeLabel, renderDesktop, renderTerminal, type Actions } from './view'
+import { renderDesktop, renderTerminal, type Actions } from './view'
 
 const snapshotAtom = atom({ plugin: 'cache-warm', key: 'snapshot' } as const, null)
 const openAtom = atom({ plugin: 'cache-warm', key: 'isOpen' } as const, true)
@@ -221,8 +221,7 @@ async function tick($: EngineInterface, opts: Options, last: { shown: string }) 
   const isAuto = await read($, autoAtom)
 
   const shown = `${w.state}|${w.remainingMs > 0 ? fmtSpan(w.remainingMs) : fmtSpan(now - (s.lastAt ?? now))}|${Math.round(w.warmth * 72)}`
-  // The footer ring shows whether or not the band does, so it ticks either way.
-  if (shown !== last.shown) {
+  if (isOpen && shown !== last.shown) {
     last.shown = shown
     await update($, nowAtom, () => now)
   }
@@ -371,38 +370,17 @@ export const register: Register = (on, options) => {
 
   // ── The Cache button in the prompt footer ──────────────────────────────
 
-  // The warmth ring and the Cache button, beside the model picker and the usage rings. The button is drawn wherever it
-  // can be pressed, as plan-progress draws Progress, dim while the band is hidden or nothing is cached; a terminal
-  // outside fullscreen has no buttons there, so the ring and the time left join its dim mode labels instead.
+  // Drawn wherever it can be pressed, as plan-progress draws Progress; dim while the band is hidden or nothing is cached.
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
-    const [isOpen, snap, isAuto, pinging, tickNow] = await Promise.all([
-      read($, openAtom),
-      read($, snapshotAtom),
-      read($, autoAtom),
-      read($, pingingAtom),
-      read($, nowAtom),
-    ])
-    const vm = snap ? buildView(snap, Math.max(tickNow, await $.clock.now()), isAuto, pinging) : null
-    if (e.surface === 'terminal' && e.viewport?.isFullscreen !== true) {
-      if (!vm || vm.state === 'empty') return next(e)
-      return next({ ...e, props: { ...e.props, modes: [...e.props.modes, modeLabel(vm)] } })
-    }
-    const isEmpty = !vm || vm.state === 'empty'
-    const E = $.ui.resolve(e)
-    const { Box, Button } = E
-    const ring = vm
-      ? e.surface === 'terminal'
-        ? footerRingTerminal(E as Parameters<typeof footerRingTerminal>[0], vm)
-        : footerRingDesktop(E as Parameters<typeof footerRingDesktop>[0], vm)
-      : null
+    if (e.surface === 'terminal' && e.viewport?.isFullscreen !== true) return next(e)
+    const [isOpen, snap] = await Promise.all([read($, openAtom), read($, snapshotAtom)])
+    const isEmpty = !snap || snap.lastAt === null
+    const { Box, Button } = $.ui.resolve(e)
     // other mods add their labels to modes beneath us; keep them
     const below = await next(e)
     return (
       <Box flexDirection="row" alignItems="center" gap={1}>
-        <Box flexDirection="row" alignItems="center" columnGap={1}>
-          {ring}
-          <Button key="cache-toggle" dimColor={!isOpen || isEmpty} label="Cache" onPress={() => void toggleOpen($)} />
-        </Box>
+        <Button key="cache-toggle" dimColor={!isOpen || isEmpty} label="Cache" onPress={() => void toggleOpen($)} />
         {below}
       </Box>
     )
