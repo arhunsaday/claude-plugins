@@ -79,6 +79,8 @@ const list = (v: unknown): Raw[] => (Array.isArray(v) ? v.filter(x => x && typeo
 const isFinished = (s: StepStatus) => s === 'done' || s === 'skipped'
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+// the title as drawn at the left of a bar: first letter upper case, the stored title (ids, alt texts) left as sent
+const shownTitle = (t: string) => t.charAt(0).toLocaleUpperCase() + t.slice(1)
 
 // short updates: {next:true}, {done:[titles]}, {active:title}, {failed:title} against the stored plan;
 // titles it cannot find come back in missing, so the call is refused instead of passing as a success
@@ -1867,7 +1869,7 @@ export const register: Register = (on, options) => {
                 <Box flexDirection="row" gap={1}>
                   <Text color={stateColor(p.state)}>{STATE_GLYPH[p.state]}</Text>
                   <Box width={titleW} flexShrink={0}>
-                    <Text wrap="truncate">{p.title}</Text>
+                    <Text wrap="truncate">{shownTitle(p.title)}</Text>
                   </Box>
                   <Raster key={`track-${p.id}`} columns={trackW} rows={1} cells={trackCells(p, trackW, now)} />
                   <Text dimColor>{`${String(pct).padStart(3, FIGURE_SPACE)}%`}</Text>
@@ -1957,7 +1959,7 @@ export const register: Register = (on, options) => {
             ...line,
             <Box key={`bar-${p.id}`} flexDirection="row" alignItems={v ? 'flex-start' : 'center'} gap={1}>
               <Text color={color}>{STATE_GLYPH[p.state]}</Text>
-              <Text wrap="truncate">{p.title}</Text>
+              <Text wrap="truncate">{shownTitle(p.title)}</Text>
               <Box flexGrow={1} />
               {Svg ? (
                 <Box flexDirection="column" flexShrink={0}>
