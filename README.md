@@ -26,7 +26,7 @@ From a shell, `claude plugin marketplace add arhunsaday/claude-plugins` and `cla
 | [where-am-i](plugins/where-am-i) | mod | A live recap above the prompt: goal, what Claude is doing now, next step, what waits on you. |
 | [blast-radius](plugins/blast-radius) | mod | Holds destructive commands and shows what they would destroy before they run. |
 | [context-cache](plugins/context-cache) | mod | Context usage, usage limits and prompt-cache warmth above the prompt, as rings; collapses to one line. |
-| [cache-warm](plugins/cache-warm) | mod | Prompt-cache countdown, hit rate and savings above the prompt, with keep-warm pings and a Cache toggle. |
+| [cache-warm](plugins/cache-warm) | mod | Prompt-cache countdown, hit rate and savings above the prompt, with keep-warm pings, toggled by /cache-warm. |
 
 ## Layout
 

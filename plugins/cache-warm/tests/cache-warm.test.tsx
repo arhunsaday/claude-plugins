@@ -136,20 +136,20 @@ test('auto keep-warm pings before the cache lapses, up to its cap', async ($, on
   expect(s.toasts.some(t => t.includes('paused'))).toBe(true)
 })
 
-test('the Cache button shows and hides the band', async ($, on) => {
+test('the footer Cache button is hidden (a decision); /cache-warm shows and hides the band', async ($, on) => {
   await start($, on)
   await reply($, 380_000, 20_000)
   const mode = await $.ui.mount({ plugin: 'cache-warm', surface: 'desktop', ...footer() } as never)
-  expect(await mode.find({ key: 'cache-toggle' })).toBeDefined()
-  await mode.press({ key: 'cache-toggle' })
+  expect(await mode.find({ key: 'cache-toggle' })).toBeUndefined()
+  await mode.unmount()
+  await run($, 'cache-warm')
   const hidden = await $.ui.mount({ plugin: 'cache-warm', surface: 'desktop', ...band() })
   expect(await hidden.find({ key: 'ping' })).toBeUndefined()
   await hidden.unmount()
-  await mode.press({ key: 'cache-toggle' })
+  await run($, 'cache-warm')
   const shown = await $.ui.mount({ plugin: 'cache-warm', surface: 'desktop', ...band() })
   expect(await shown.find({ key: 'ping' })).toBeDefined()
   await shown.unmount()
-  await mode.unmount()
 })
 
 test('the chevron and /cache-warm-collapse fold the band to one line', async ($, on) => {

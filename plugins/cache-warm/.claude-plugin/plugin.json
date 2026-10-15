@@ -1,7 +1,7 @@
 {
   "name": "cache-warm",
   "version": "1.4.0",
-  "description": "Prompt-cache warmth above the prompt: a countdown bar, hit rate per reply, what the cache saved, lapse warnings and keep-warm pings (by hand or automatic), with a Cache button to show or hide it",
+  "description": "Prompt-cache warmth above the prompt: a countdown bar, hit rate per reply, what the cache saved, lapse warnings and keep-warm pings (by hand or automatic); /cache-warm shows or hides it",
   "author": {
     "name": "Arhun Saday",
     "url": "https://arhun.fr"

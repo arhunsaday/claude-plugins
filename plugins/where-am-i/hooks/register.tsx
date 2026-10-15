@@ -150,6 +150,7 @@ export const register: Register = on => {
       e.props.bodyColumns,
       isCollapsed,
       () => void toggleCollapsed($),
+      e.surface !== 'terminal',
     )
     if (!mine) return rest
     if (!rest) return mine

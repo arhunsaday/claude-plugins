@@ -15,6 +15,9 @@ const STRIP_GAP = 2
 // rows of strips per bar, the "+N more" row included: the band above the prompt has room for about 300 px
 const stripBudget = (bars: number) => (bars >= 3 ? 3 : bars === 2 ? 4 : 5)
 const FOLD_MS = 5000 // finished strips stay this long, failed ones stay until the bar closes
+// Decision (2026-10-15): the footer buttons (Progress here, Cache in cache-warm) are hidden; /progress shows and
+// hides the bars. The code stays so the button can come back by setting this to true.
+const SHOW_FOOTER_BUTTON = false
 
 // one lightness for every state (OKLCH L .55, hues of the desktop's violet, amber, red and green), so no state
 // shouts louder than another, and white on each reads at 4.5:1 or better
@@ -1812,6 +1815,7 @@ export const register: Register = (on, options) => {
 
   // drawn wherever it can be pressed, so the person sees the mod is loaded; dim while there is nothing to show
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+    if (!SHOW_FOOTER_BUTTON) return next(e)
     if (e.surface === 'terminal' && e.viewport?.isFullscreen !== true) return next(e)
     const count = (await read($, plans)).length
     const open = await read($, isOpen)
@@ -1895,7 +1899,7 @@ export const register: Register = (on, options) => {
       // Asked last: a slow hook below would otherwise let an older draw set the band after a newer one
       const below = await next(e)
       return below ? (
-        <Box flexDirection="column" gap={1}>
+        <Box flexDirection="column" rowGap={1}>
           {tree}
           {below}
         </Box>
@@ -1997,7 +2001,7 @@ export const register: Register = (on, options) => {
     )
     const below = await next(e)
     return below ? (
-      <Box flexDirection="column" gap={1}>
+      <Box flexDirection="column" rowGap={1}>
         {bars}
         {below}
       </Box>

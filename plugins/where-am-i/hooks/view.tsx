@@ -1,5 +1,6 @@
 // The recap above the prompt, laid out as the other mods in this marketplace: host elements and theme colours,
-// a bold header row with dim detail and the fold chevron at its end, aligned labels, no card or background.
+// a bold header row with dim detail and the fold chevron at its end, aligned dim labels, status dots in their
+// colour before default text, no card or background.
 
 import type { Elements, RenderElement } from 'claude-code'
 
@@ -7,6 +8,30 @@ import type { WhereRecap } from '../types'
 import { clip, elapsed } from './recap'
 
 type Els = Pick<Elements['terminal'], 'Box' | 'Text' | 'Button'>
+type DeskSvg = Elements['desktop']['Svg']
+
+// Lucide chevron-up (fold) / chevron-down (open), drawn as plan-progress, context-cache and cache-warm draw theirs on
+// the desktop: the picture centred in its cell and a blank Button over it, so the host draws its own hover and focus
+// ring and takes the press. The terminal draws ▾ / ▸.
+const CHIP = 16
+const chevronSvg = (isCollapsed: boolean) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${CHIP}" height="${CHIP}" viewBox="0 0 24 24"><style>.c{stroke:#C2C0B6}` +
+  `@media (prefers-color-scheme:light){.c{stroke:#3D3D3A}}</style>` +
+  `<path class="c" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="${isCollapsed ? 'm6 9 6 6 6-6' : 'm18 15-6-6-6 6'}"/></svg>`
+
+function chevronFor(E: Els, isDesktop: boolean, isCollapsed: boolean, toggle: () => void): RenderElement {
+  const { Box, Button } = E
+  if (!isDesktop) return <Button key="collapse" plain dimColor label={isCollapsed ? '▸' : '▾'} onPress={toggle} />
+  const Svg = (E as unknown as { Svg: DeskSvg }).Svg
+  return (
+    <Box key="collapse-cell" width={3} height={1} flexShrink={0} justifyContent="center" alignItems="center">
+      <Svg source={chevronSvg(isCollapsed)} alt={isCollapsed ? 'expand the recap' : 'collapse the recap'} width={CHIP} height={CHIP} />
+      <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
+        <Button key="collapse" plain label={'  '} onPress={toggle} />
+      </Box>
+    </Box>
+  )
+}
 
 export type Model = {
   recap: WhereRecap | null
@@ -21,7 +46,14 @@ export type Model = {
 
 const LABEL_W = 7
 
-export function renderBand(E: Els, m: Model, columns: number, isCollapsed: boolean, toggle: () => void): RenderElement | null {
+export function renderBand(
+  E: Els,
+  m: Model,
+  columns: number,
+  isCollapsed: boolean,
+  toggle: () => void,
+  isDesktop = false,
+): RenderElement | null {
   const { Box, Text, Button } = E
   const r = m.recap
   const goal = r?.goal ?? clip(m.prompt)
@@ -31,8 +63,8 @@ export function renderBand(E: Els, m: Model, columns: number, isCollapsed: boole
   const meta = [m.since !== null ? elapsed(m.now - m.since) : '', m.turns > 0 ? `${m.turns} turn${m.turns === 1 ? '' : 's'}` : '']
     .filter(Boolean)
     .join(' · ')
-  const chevron = <Button key="collapse" plain dimColor label={isCollapsed ? '▸' : '▾'} onPress={toggle} />
-  const status = m.isWorking ? <Text color="claude">{'● '}</Text> : <Text color="success">{'✓ '}</Text>
+  const chevron = chevronFor(E, isDesktop, isCollapsed, toggle)
+  const status = <Text color={m.isWorking ? 'claude' : 'success'}>{'● '}</Text>
 
   if (isCollapsed) {
     return (
@@ -41,10 +73,12 @@ export function renderBand(E: Els, m: Model, columns: number, isCollapsed: boole
           <Text wrap="truncate-end">
             <Text color="suggestion">{'◆ '}</Text>
             <Text bold dimColor={isProvisional}>{goal}</Text>
-            {doing ? <Text dimColor>{'  ·  '}</Text> : null}
+            {doing ? <Text dimColor>{' · '}</Text> : null}
             {doing ? status : null}
             {doing ? <Text dimColor={!m.isWorking}>{clip(doing, 60)}</Text> : null}
-            {r?.waiting ? <Text color="warning">{`  ·  ⏳ ${clip(r.waiting, 50)}`}</Text> : null}
+            {r?.waiting ? <Text dimColor>{' · '}</Text> : null}
+            {r?.waiting ? <Text color="warning">{'● '}</Text> : null}
+            {r?.waiting ? <Text>{clip(r.waiting, 50)}</Text> : null}
           </Text>
         </Box>
         {chevron}
@@ -95,9 +129,10 @@ export function renderBand(E: Els, m: Model, columns: number, isCollapsed: boole
       {r?.waiting
         ? row(
             'waiting',
-            <Text color="warning">{'  You'}</Text>,
-            <Text color="warning" wrap="truncate-end">
-              {`⏳ ${r.waiting}`}
+            <Text dimColor>{'  You'}</Text>,
+            <Text wrap="truncate-end">
+              <Text color="warning">{'● '}</Text>
+              <Text>{r.waiting}</Text>
             </Text>,
           )
         : null}

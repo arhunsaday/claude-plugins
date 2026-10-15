@@ -42,6 +42,10 @@ const autoAtom = atom({ plugin: 'cache-warm', key: 'isAuto' } as const, false)
 const pingingAtom = atom({ plugin: 'cache-warm', key: 'isPinging' } as const, false)
 const nowAtom = atom({ plugin: 'cache-warm', key: 'now' } as const, 0)
 
+// Decision (2026-10-15): the footer buttons (Cache here, Progress in plan-progress) are hidden; /cache-warm shows and
+// hides the band. The code stays so the button can come back by setting this to true.
+const SHOW_FOOTER_BUTTON = false
+
 const PING_PROMPT = 'Keep-alive ping from the cache-warm mod, not a request: reply with the single word "ok".'
 const MAX_TRANSCRIPT_BYTES = 4 * 1024 * 1024 - 1024
 
@@ -347,7 +351,7 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'cache-warm' }, async $ => {
     const isOpen = await toggleOpen($)
-    return { text: isOpen ? 'Prompt cache band shown.' : 'Prompt cache band hidden. The Cache button or /cache-warm shows it again.' }
+    return { text: isOpen ? 'Prompt cache band shown.' : 'Prompt cache band hidden. /cache-warm shows it again.' }
   })
 
   on('command.run', { command: 'cache-warm-ping' }, async $ => ({ text: await ping($) }))
@@ -372,6 +376,7 @@ export const register: Register = (on, options) => {
 
   // Drawn wherever it can be pressed, as plan-progress draws Progress; dim while the band is hidden or nothing is cached.
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+    if (!SHOW_FOOTER_BUTTON) return next(e)
     if (e.surface === 'terminal' && e.viewport?.isFullscreen !== true) return next(e)
     const [isOpen, snap] = await Promise.all([read($, openAtom), read($, snapshotAtom)])
     const isEmpty = !snap || snap.lastAt === null

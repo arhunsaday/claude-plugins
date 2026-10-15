@@ -1,6 +1,6 @@
 {
   "name": "context-cache",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Context usage, usage limits (session, weekly, Fable) and prompt-cache warmth above the prompt, drawn in your theme, with Clear / Compact; collapses to one line.",
   "author": {
     "name": "Arhun Saday",

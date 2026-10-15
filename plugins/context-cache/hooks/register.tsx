@@ -556,7 +556,7 @@ export const register: Register = on => {
     if (!below) return mine
     const { Box } = E
     return (
-      <Box flexDirection="column" gap={1}>
+      <Box flexDirection="column" rowGap={1}>
         {mine}
         {below}
       </Box>

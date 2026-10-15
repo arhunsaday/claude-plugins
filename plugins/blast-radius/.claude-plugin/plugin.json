@@ -1,6 +1,6 @@
 {
   "name": "blast-radius",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Holds destructive commands (rm -r, force pushes, git resets and cleans, branch deletes, migrations, SQL drops) and shows exactly what they would destroy before they run.",
   "author": {
     "name": "Arhun Saday",

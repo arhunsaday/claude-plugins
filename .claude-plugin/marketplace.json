@@ -24,7 +24,7 @@
     {
       "name": "cache-warm",
       "source": "./plugins/cache-warm",
-      "description": "Prompt-cache warmth above the prompt: countdown, hit rate, savings, lapse warnings and keep-warm pings, with a Cache toggle",
+      "description": "Prompt-cache warmth above the prompt: countdown, hit rate, savings, lapse warnings and keep-warm pings, toggled by /cache-warm",
       "category": "mod",
       "tags": [
         "mod",

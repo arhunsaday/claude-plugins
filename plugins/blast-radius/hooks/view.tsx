@@ -1,6 +1,7 @@
 // The held command, as a pane (or above the prompt where no pane fits). Host elements and theme colours only,
-// laid out as the other mods in this marketplace: a bold header, dim detail, a blank row between sections,
-// the buttons on their own row with the safe choice first.
+// laid out as the other mods in this marketplace: a coloured glyph, a bold title and dim detail after ` · `,
+// status dots in their colour before default text, a blank row between sections, the buttons on their own row
+// with the safe choice first.
 
 import type { Elements, RenderElement } from 'claude-code'
 
@@ -28,8 +29,6 @@ function recoveryTone(text: string): 'success' | 'warning' | 'error' {
   return 'warning'
 }
 
-const BAR = 12
-
 type Els = Pick<Elements['terminal'], 'Box' | 'Text' | 'Button' | 'Code'>
 
 export function report(E: Els, one: HeldCommand, decide: (id: string, d: Decision) => void): RenderElement {
@@ -40,12 +39,11 @@ export function report(E: Els, one: HeldCommand, decide: (id: string, d: Decisio
   const more = one.total - shown.length
   const noteW = Math.max(0, ...shown.map(i => (i.note ?? '').length))
 
+  // The countdown is header detail: dim, in the warning colour for its last ten seconds.
   const countdown =
     one.secondsLeft !== null && one.timeoutSeconds ? (
-      <Text key="countdown" dimColor={one.secondsLeft > 10} color={one.secondsLeft <= 10 ? 'warning' : undefined}>
-        {`auto-cancels in ${one.secondsLeft} s `}
-        <Text color={one.secondsLeft <= 10 ? 'warning' : undefined}>{'━'.repeat(Math.max(1, Math.round((one.secondsLeft / one.timeoutSeconds) * BAR)))}</Text>
-        <Text dimColor>{'─'.repeat(Math.max(0, BAR - Math.round((one.secondsLeft / one.timeoutSeconds) * BAR)))}</Text>
+      <Text dimColor={one.secondsLeft > 10} color={one.secondsLeft <= 10 ? 'warning' : undefined}>
+        {` · auto-cancels in ${one.secondsLeft} s`}
       </Text>
     ) : null
 
@@ -55,16 +53,19 @@ export function report(E: Els, one: HeldCommand, decide: (id: string, d: Decisio
         <Text wrap="truncate-end">
           <Text color={color}>{'⚠ '}</Text>
           <Text bold>{TITLE[one.risk]}</Text>
-          <Text dimColor>{' · '}</Text>
-          <Text color={color}>{SEVERITY_LABEL[one.severity]}</Text>
+          <Text dimColor>{` · ${SEVERITY_LABEL[one.severity]}`}</Text>
+          {countdown}
         </Text>
         <Code source={one.command} language="bash" wrap={isBand ? 'truncate-end' : 'wrap'} />
       </Box>
 
       <Box flexDirection="column">
-        <Text bold wrap="wrap">{`Would ${one.summary}`}</Text>
+        <Text wrap="wrap">{`Would ${one.summary}`}</Text>
         {one.warnings.map(w => (
-          <Text color="error" wrap="wrap">{`✖ ${w}`}</Text>
+          <Text wrap="wrap">
+            <Text color="error">{'● '}</Text>
+            <Text>{w}</Text>
+          </Text>
         ))}
         {one.recovery ? (
           <Text wrap="wrap">
@@ -92,11 +93,10 @@ export function report(E: Els, one: HeldCommand, decide: (id: string, d: Decisio
         </Box>
       ) : null}
 
-      <Box flexDirection="row" columnGap={1} alignItems="center">
+      <Box flexDirection="row" columnGap={1}>
         <Button key="cancel" label="Cancel" hotkey="c" variant="primary" autoFocus onPress={() => decide(one.id, 'cancel')} />
         <Button key="proceed" label="Proceed" hotkey="y" onPress={() => decide(one.id, 'proceed')} />
         <Button key="allow" label="Allow this session" hotkey="a" onPress={() => decide(one.id, 'allow')} />
-        {countdown}
       </Box>
     </Box>
   )

@@ -34,7 +34,7 @@ If you installed the upstream copy (`plan-progress@zycck-mods`), uninstall it fi
 - `/progress-agents` folds the agent strips under the bars, or shows them again (the chevron next to a bar's ✕ does it for that bar)
 - `/plan-progress-autoclose` turns off finished bars leaving on their own, or turns it back on; the choice is kept across sessions
 
-The **Progress** button in the footer does the same as `/progress`.
+The footer's **Progress** button, which did the same as `/progress`, is hidden for now (a decision; `SHOW_FOOTER_BUTTON` in `hooks/register.tsx` brings it back).
 
 ## How it works
 

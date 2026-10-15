@@ -69,7 +69,7 @@ describe('the band', () => {
       expect(await ui.find({ type: 'Text', text: /^Ship 3 mods$/ })).toBeDefined()
       expect(await ui.find({ type: 'Text', text: /^built Where Am I$/ })).toBeDefined()
       expect(await ui.find({ type: 'Text', text: /^Rulebook Guard$/ })).toBeDefined()
-      expect(await ui.find({ type: 'Text', text: /⏳ you to test it/ })).toBeDefined()
+      expect(await ui.find({ type: 'Text', text: /you to test it/ })).toBeDefined()
       expect(await ui.find({ type: 'Text', text: /band below/ })).toBeDefined()
       await ui.unmount()
     }

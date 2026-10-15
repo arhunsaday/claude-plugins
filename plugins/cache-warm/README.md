@@ -1,6 +1,6 @@
 # cache-warm
 
-A Claude Code mod that watches your conversation's prompt cache from above the prompt: how long it stays warm, how much each reply read from it, what it saved you, and a keep-warm ping that stops it lapsing while you are away. A **Cache** button in the prompt footer shows or hides it, as **Progress** does for plan-progress.
+A Claude Code mod that watches your conversation's prompt cache from above the prompt: how long it stays warm, how much each reply read from it, what it saved you, and a keep-warm ping that stops it lapsing while you are away. `/cache-warm` shows or hides it.
 
 It starts folded to one line; the chevron or `/cache-warm-collapse` opens it.
 
@@ -50,13 +50,13 @@ Without Auto, a toast says when the cache starts cooling and when it went cold. 
 
 | Command | Does |
 |---|---|
-| `/cache-warm` | Show or hide the band (the same as the **Cache** button) |
+| `/cache-warm` | Show or hide the band |
 | `/cache-warm-ping` | Keep the cache warm now |
 | `/cache-warm-auto` | Turn automatic keep-warm pings on or off |
 | `/cache-warm-collapse` | Fold the band to one line, or open it again (the chevron) |
 | `/cache-warm-status` | Every figure, the TTL and where it came from, and the keep-warm settings |
 
-The band, the fold and Auto are remembered across sessions. The ping runs on your main model with its thinking settings, so a little output is billed on top of the read. The **Cache** button shows on the desktop and in a fullscreen terminal; it is dim while the band is hidden or nothing is cached.
+The band, the fold and Auto are remembered across sessions. The ping runs on your main model with its thinking settings, so a little output is billed on top of the read. The footer's **Cache** button is hidden for now, as is plan-progress's **Progress** (a decision; `SHOW_FOOTER_BUTTON` in `hooks/register.tsx` brings it back).
 
 ## Install
 

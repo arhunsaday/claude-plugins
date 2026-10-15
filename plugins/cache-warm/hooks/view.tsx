@@ -33,9 +33,7 @@ function header(E: TermEls, vm: ViewModel, chevron: RenderElement | null, tail: 
       <Box flexShrink={1} minWidth={0}>
         <Text wrap="truncate">
           <Text bold>Cache</Text>
-          <Text dimColor> · </Text>
-          <Text color={vm.tone}>{vm.isPinging ? 'Warming' : vm.label}</Text>
-          <Text dimColor>{` · ${vm.detail}${vm.isTtlKnown || !isLive(vm) ? '' : ' (assumed)'}`}</Text>
+          <Text dimColor>{` · ${vm.isPinging ? 'Warming' : vm.label} · ${vm.detail}${vm.isTtlKnown || !isLive(vm) ? '' : ' (assumed)'}`}</Text>
         </Text>
       </Box>
       {tail}

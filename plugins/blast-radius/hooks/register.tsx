@@ -126,10 +126,20 @@ export const register: Register = (on, options) => {
     return report($.ui.resolve(e), one, decide)
   })
 
-  // A held command takes the band until answered, above what is drawn there.
+  // A held command takes the top of the band until answered; what the host and other mods draw there stays under it.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const one = await read($, held)
     if (!one || one.where !== 'band' || e.props.hasSurvey) return next(e)
-    return report($.ui.resolve(e), one, decide)
+    const E = $.ui.resolve(e)
+    const mine = report(E, one, decide)
+    const below = await next(e)
+    if (!below) return mine
+    const { Box } = E
+    return (
+      <Box flexDirection="column" rowGap={1}>
+        {mine}
+        {below}
+      </Box>
+    )
   })
 }

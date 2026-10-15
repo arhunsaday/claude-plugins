@@ -904,7 +904,8 @@ const C = {
     const foot = async fs => (await E.footer('terminal', fs)).filter(n => n.type === 'Button').length
     const desk = (await E.footer('desktop', undefined)).filter(n => n.type === 'Button').length
     const r = [await band(false), await band(true), await foot(false), await foot(true), desk]
-    return [`band ${r[0]}/${r[1]}, footer ${r[2]}/${r[3]}, desktop ${r[4]}`, r.join() === '0,1,0,1,1']
+    // the footer's Progress button is hidden by decision (SHOW_FOOTER_BUTTON in register.tsx)
+    return [`band ${r[0]}/${r[1]}, footer ${r[2]}/${r[3]}, desktop ${r[4]}`, r.join() === '0,1,0,0,0']
   },
   async desktop_still_draws_svg(E) {
     await create(E)
