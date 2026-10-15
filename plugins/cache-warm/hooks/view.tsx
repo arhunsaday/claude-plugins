@@ -307,3 +307,26 @@ export function renderDesktop(E: DeskEls, vm: ViewModel, columns: number, action
     </Box>
   )
 }
+
+// ── The prompt footer, beside the model picker and the usage rings ─────────
+
+/** The terminal's dim mode label outside fullscreen: the ring glyph and the time left. */
+export function modeLabel(vm: ViewModel): string {
+  const left = vm.state === 'warm' || vm.state === 'cooling' ? fmtSpan(vm.remainingMs) : vm.state === 'cold' ? 'cold' : 'empty'
+  return `${ringGlyph(vm)} cache ${left}`
+}
+
+export function footerRingTerminal(E: TermEls, vm: ViewModel): RenderElement {
+  const { Text } = E
+  return (
+    <Text key="footer-ring" color={vm.tone}>
+      {ringGlyph(vm)}
+    </Text>
+  )
+}
+
+export function footerRingDesktop(E: DeskEls, vm: ViewModel): RenderElement {
+  const { Svg } = E
+  const details = detailsOf(vm)
+  return <Svg key="footer-ring" source={ringSvg(vm.warmth, vm.tone, details)} alt={details} width={RING} height={RING} isInteractive />
+}
