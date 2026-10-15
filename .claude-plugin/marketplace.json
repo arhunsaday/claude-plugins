@@ -22,6 +22,17 @@
       ]
     },
     {
+      "name": "cache-warm",
+      "source": "./plugins/cache-warm",
+      "description": "Prompt-cache warmth above the prompt: countdown, hit rate, savings, lapse warnings and keep-warm pings, with a Cache toggle",
+      "category": "mod",
+      "tags": [
+        "mod",
+        "prompt-cache",
+        "keep-warm"
+      ]
+    },
+    {
       "name": "context-cache",
       "source": "./plugins/context-cache",
       "description": "Context usage, usage limits and prompt-cache warmth above the prompt, drawn in your theme; collapses to one line",

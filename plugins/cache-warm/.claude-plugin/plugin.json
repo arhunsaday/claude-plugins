@@ -1,0 +1,27 @@
+{
+  "name": "cache-warm",
+  "version": "1.0.0",
+  "description": "Prompt-cache warmth above the prompt: a countdown bar, hit rate per reply, what the cache saved, lapse warnings and keep-warm pings (by hand or automatic), with a Cache button to show or hide it",
+  "author": {
+    "name": "Arhun Saday",
+    "url": "https://arhun.fr"
+  },
+  "license": "MIT",
+  "keywords": ["mod", "prompt-cache", "cache", "keep-warm", "cost", "collapsible"],
+  "userConfig": {
+    "maxAutoPings": {
+      "type": "number",
+      "title": "Automatic pings while away",
+      "description": "How many keep-warm pings /cache-warm-auto sends between two of your messages before it pauses",
+      "default": 4,
+      "min": 1
+    },
+    "notify": {
+      "type": "boolean",
+      "title": "Notify when the cache cools",
+      "description": "Raise a native notification when the prompt cache is about to lapse",
+      "default": false
+    }
+  },
+  "types": "./types/index.d.ts"
+}
