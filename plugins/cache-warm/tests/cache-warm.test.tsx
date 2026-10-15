@@ -10,21 +10,21 @@ const SURFACES = ['terminal', 'desktop'] as const
 const MIN = 60_000
 const NOW = Date.UTC(2026, 9, 15, 12)
 
-const usage = (read: number, written: number, uncached = 0) => ({
+const usage = (read: number, written: number, uncached = 0, model = 'claude-opus-5-5') => ({
   input_tokens: uncached,
   output_tokens: 500,
   cache_read_input_tokens: read,
   cache_creation_input_tokens: written,
-  model: 'claude-opus-5-5',
+  model,
 })
 
-type Started = { clock: MockClock; toasts: string[]; forks: number }
+type Started = { clock: MockClock; toasts: string[]; forks: number; forkTakesMs: number }
 
-/** Stands in for the engine beneath the mod, then starts the session. */
-async function start($: Engine, on: On): Promise<Started> {
+/** Stands in for the engine beneath the mod, then starts the session, the band expanded unless asked not to. */
+async function start($: Engine, on: On, isExpanded = true): Promise<Started> {
   const clock = mock.clock(on, { now: NOW })
   mock.store(on)
-  const s: Started = { clock, toasts: [], forks: 0 }
+  const s: Started = { clock, toasts: [], forks: 0, forkTakesMs: 0 }
   on('command.register', async (_$, e) => ({ value: { command: e.name } }))
   on('ui.toast', async (_$, e) => {
     s.toasts.push(e.text)
@@ -32,6 +32,7 @@ async function start($: Engine, on: On): Promise<Started> {
   })
   on('model.fork', async () => {
     s.forks += 1
+    if (s.forkTakesMs > 0) await clock.sleep(s.forkTakesMs)
     return { value: { isAnswered: true as const, text: 'ok', usage: usage(480_000, 0, 20) } }
   })
   on('session.start', async (_$, e) => ({ cwd: e.cwd }))
@@ -44,13 +45,22 @@ async function start($: Engine, on: On): Promise<Started> {
     return <Box key="engine-band" />
   })
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
+  if (isExpanded) await run($, 'cache-warm-collapse')
   return s
 }
 
-/** One main-thread reply lands: a turn with that usage. */
-async function reply($: Engine, read: number, written: number) {
+/** One main-thread reply lands: a turn with that usage, `takesMs` after its request started. */
+async function reply($: Engine, read: number, written: number, opts: { model?: string; takesMs?: number; clock?: MockClock } = {}) {
   await $.turn.start({ text: 'hi', turnId: 't' } as never)
-  await $.turn.complete({ answer: 'ok', durationMs: 1000, isAborted: false, turnId: 't', reason: 'answer', usage: usage(read, written) } as never)
+  if (opts.takesMs && opts.clock) await opts.clock.advance(opts.takesMs)
+  await $.turn.complete({
+    answer: 'ok',
+    durationMs: 1000,
+    isAborted: false,
+    turnId: 't',
+    reason: 'answer',
+    usage: usage(read, written, 0, opts.model),
+  } as never)
 }
 
 const band = () => ({
@@ -178,4 +188,48 @@ test('nothing is drawn with a background or border', async ($, on) => {
     }
     await ui.unmount()
   }
+})
+
+test('the band starts folded to one line', async ($, on) => {
+  await start($, on, false)
+  await reply($, 380_000, 20_000)
+  for (const surface of SURFACES) {
+    const ui = await $.ui.mount({ plugin: 'cache-warm', surface, ...band() })
+    expect(await ui.find({ key: 'collapse' })).toBeDefined()
+    expect(await ui.find({ key: 'ping' })).toBeUndefined()
+    await ui.unmount()
+  }
+})
+
+test('the countdown runs from when the request started, not when its reply landed', async ($, on) => {
+  const s = await start($, on)
+  await reply($, 380_000, 20_000, { takesMs: 2 * MIN, clock: s.clock })
+  const ui = await $.ui.mount({ plugin: 'cache-warm', surface: 'terminal', ...band() })
+  expect(await ui.find({ text: /58m left of 1h/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a slow keep-warm ping is timed from its start', async ($, on) => {
+  const s = await start($, on)
+  await reply($, 380_000, 20_000)
+  await s.clock.advance(30 * MIN)
+  s.forkTakesMs = MIN
+  const pinged = run($, 'cache-warm-ping')
+  await s.clock.advance(MIN)
+  expect(JSON.stringify(await pinged)).toContain('kept warm')
+  const ui = await $.ui.mount({ plugin: 'cache-warm', surface: 'terminal', ...band() })
+  expect(await ui.find({ text: /59m left of 1h/ })).toBeDefined()
+  await ui.unmount()
+})
+
+test('savings price reads at 0.025x on Claude Fable 5.1', async ($, on) => {
+  await start($, on)
+  await reply($, 380_000, 20_000, { model: 'claude-fable-5-1' })
+  expect(JSON.stringify(await run($, 'cache-warm-status'))).toContain('−88%')
+})
+
+test('savings on other models price reads at 0.1x', async ($, on) => {
+  await start($, on)
+  await reply($, 380_000, 20_000)
+  expect(JSON.stringify(await run($, 'cache-warm-status'))).toContain('−81%')
 })

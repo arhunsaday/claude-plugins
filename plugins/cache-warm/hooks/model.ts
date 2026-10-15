@@ -19,9 +19,10 @@ export const STATE_TONE: Record<CacheState, Tone> = {
 export const STATE_LABEL: Record<CacheState, string> = { warm: 'Warm', cooling: 'Cooling', cold: 'Cold', empty: 'Empty' }
 export const STATE_GLYPH: Record<CacheState, string> = { warm: '♨', cooling: '♨', cold: '❄', empty: '○' }
 
-// Input prices relative to an uncached token: a cache read is a tenth, a write
-// 1.25× for the 5-minute TTL and 2× for the hour.
+// Input prices relative to an uncached token: a cache read is a tenth (a
+// fortieth on Claude Fable 5.1), a write 1.25× for the 5-minute TTL and 2× for the hour.
 const READ_RATE = 0.1
+export const readRate = (model: string | undefined) => (model !== undefined && /fable-5-1/i.test(model) ? 0.025 : READ_RATE)
 export const writeRate = (ttlMs: number) => (ttlMs >= TTL_1H ? 2 : 1.25)
 
 /** How long before the cache lapses an automatic ping goes out. */
@@ -33,7 +34,7 @@ export const emptySnapshot = (ttlMs: number, isTtlKnown: boolean): CacheWarmSnap
   isTtlKnown,
   prefixTokens: 0,
   replies: [],
-  totals: { read: 0, written: 0, uncached: 0 },
+  totals: { read: 0, written: 0, uncached: 0, readCost: 0 },
   pings: 0,
   pingRead: 0,
   lastPingAt: null,
@@ -65,7 +66,7 @@ export function hitRate(t: Pick<CacheWarmTotals, 'read' | 'written' | 'uncached'
 export function savedShare(t: CacheWarmTotals, ttlMs: number): number | null {
   const total = t.read + t.written + t.uncached
   if (total === 0) return null
-  return 1 - (READ_RATE * t.read + writeRate(ttlMs) * t.written + t.uncached) / total
+  return 1 - ((t.readCost ?? READ_RATE * t.read) + writeRate(ttlMs) * t.written + t.uncached) / total
 }
 
 export type Warmth = {
@@ -168,8 +169,8 @@ export function buildView(snap: CacheWarmSnapshot, now: number, isAuto: boolean,
   }
 }
 
-/** A reply landed: it refreshed the cache, and if the one before had lapsed, that is a lapse. */
-export function withReply(snap: CacheWarmSnapshot, r: CacheWarmReply, prefixTokens: number | null): CacheWarmSnapshot {
+/** A reply landed: it refreshed the cache, and if the one before had lapsed, that is a lapse. `r.at` is when its request started. */
+export function withReply(snap: CacheWarmSnapshot, r: CacheWarmReply, prefixTokens: number | null, rate = READ_RATE): CacheWarmSnapshot {
   const isLapse = !r.isPing && snap.lastAt !== null && r.at - snap.lastAt > snap.ttlMs
   return {
     ...snap,
@@ -178,7 +179,12 @@ export function withReply(snap: CacheWarmSnapshot, r: CacheWarmReply, prefixToke
     replies: [...snap.replies, r].slice(-MAX_REPLIES),
     totals: r.isPing
       ? snap.totals
-      : { read: snap.totals.read + r.read, written: snap.totals.written + r.written, uncached: snap.totals.uncached + r.uncached },
+      : {
+          read: snap.totals.read + r.read,
+          written: snap.totals.written + r.written,
+          uncached: snap.totals.uncached + r.uncached,
+          readCost: (snap.totals.readCost ?? READ_RATE * snap.totals.read) + rate * r.read,
+        },
     pings: r.isPing ? snap.pings + 1 : snap.pings,
     pingRead: r.isPing ? snap.pingRead + r.read : snap.pingRead,
     lastPingAt: r.isPing ? r.at : snap.lastPingAt,

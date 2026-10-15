@@ -19,11 +19,13 @@ export type CacheWarmTotals = {
   read: number
   written: number
   uncached: number
+  /** Reads priced against an uncached token on the model that answered (0.1×, 0.025× on Claude Fable 5.1); absent in snapshots from before 1.0.1. */
+  readCost?: number
 }
 
 /** What is known about the main conversation's prompt cache. */
 export type CacheWarmSnapshot = {
-  /** When the cache was last written or read; null when nothing is cached. */
+  /** When the request that last wrote or read the cache started (the TTL runs from there); null when nothing is cached. */
   lastAt: number | null
   /** The cache's time to live in milliseconds (300000 or 3600000). */
   ttlMs: number
@@ -50,7 +52,7 @@ declare module 'claude-code' {
       snapshot: CacheWarmSnapshot | null
       /** The band is shown (the Cache button, /cache-warm). */
       isOpen: boolean
-      /** Folded to one line (the chevron, /cache-warm-collapse); mirrored to $.store. */
+      /** Folded to one line, the default (the chevron, /cache-warm-collapse); mirrored to $.store. */
       isCollapsed: boolean
       /** Pings the cache by itself before it lapses while idle (/cache-warm-auto); mirrored to $.store. */
       isAuto: boolean

@@ -5,11 +5,12 @@
 // does not pay to write the whole conversation again.
 //
 // Where each figure comes from:
-// - Warmth: the time of the last main-thread response (turn.step) and the TTL it
-//   was cached with (the transcript's usage, or the engine's model-switch report).
+// - Warmth: when the last main-thread request started (the cache's TTL runs from
+//   a request's start, not its reply) and the TTL it was cached with (the
+//   transcript's usage, or the engine's model-switch report).
 // - Hit rate, read, written: each response's usage as the API reported it.
-// - Saved: those counts priced at a tenth for a read and 1.25× (5m) or 2× (1h)
-//   for a write, against sending every token uncached.
+// - Saved: those counts priced at a tenth for a read (a fortieth on Claude Fable
+//   5.1) and 1.25× (5m) or 2× (1h) for a write, against sending every token uncached.
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
@@ -24,6 +25,7 @@ import {
   fmtTtl,
   hitRate,
   pct,
+  readRate,
   savedShare,
   TTL_1H,
   TTL_5M,
@@ -35,7 +37,7 @@ import { renderDesktop, renderTerminal, type Actions } from './view'
 
 const snapshotAtom = atom({ plugin: 'cache-warm', key: 'snapshot' } as const, null)
 const openAtom = atom({ plugin: 'cache-warm', key: 'isOpen' } as const, true)
-const collapsedAtom = atom({ plugin: 'cache-warm', key: 'isCollapsed' } as const, false)
+const collapsedAtom = atom({ plugin: 'cache-warm', key: 'isCollapsed' } as const, true)
 const autoAtom = atom({ plugin: 'cache-warm', key: 'isAuto' } as const, false)
 const pingingAtom = atom({ plugin: 'cache-warm', key: 'isPinging' } as const, false)
 const nowAtom = atom({ plugin: 'cache-warm', key: 'now' } as const, 0)
@@ -63,6 +65,7 @@ function optionsOf(raw: unknown): Options {
 let isWorking = false
 let isPinging = false
 let stepsThisTurn = 0
+let turnStartedAt = 0
 // Automatic pings since the person last sent a message; capped so an empty desk does not ping all night.
 let autoPings = 0
 let isCapToasted = false
@@ -108,10 +111,10 @@ async function learnTtl($: EngineInterface, transcriptPath: string | undefined) 
   }
 }
 
-type Usage = { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number }
+type Usage = { input_tokens: number; output_tokens: number; cache_read_input_tokens: number; cache_creation_input_tokens: number; model?: string }
 
-async function record($: EngineInterface, u: Usage, isPing: boolean) {
-  const at = await $.clock.now()
+/** `at` is when the request started: the cache entry's TTL runs from there, so a long reply eats into it. */
+async function record($: EngineInterface, u: Usage, isPing: boolean, at: number) {
   const reply: CacheWarmReply = {
     at,
     read: u.cache_read_input_tokens,
@@ -121,7 +124,7 @@ async function record($: EngineInterface, u: Usage, isPing: boolean) {
   }
   // A ping's own tail is never cached: the prefix the next message re-sends is unchanged.
   const prefix = isPing ? null : u.cache_read_input_tokens + u.cache_creation_input_tokens + u.input_tokens + u.output_tokens
-  await edit($, s => withReply(s, reply, prefix))
+  await edit($, s => withReply(s, reply, prefix, readRate(u.model)))
 }
 
 /** Re-reads the cached conversation through a fork, which resets the cache's TTL. Resolves what to tell the person. */
@@ -131,10 +134,11 @@ async function ping($: EngineInterface): Promise<string> {
   isPinging = true
   await update($, pingingAtom, () => true)
   try {
+    const startedAt = await $.clock.now()
     const r = await $.model.fork({ prompt: PING_PROMPT })
     if (!r.isAnswered && r.reason === 'nothing-to-fork') return 'Nothing cached to keep warm yet: the first reply writes the cache.'
     const u = r.usage
-    if (u.cache_read_input_tokens + u.cache_creation_input_tokens > 0) await record($, u, true)
+    if (u.cache_read_input_tokens + u.cache_creation_input_tokens > 0) await record($, u, true, startedAt)
     if (!r.isAnswered && r.reason === 'api-error') return `Keep-warm ping failed: ${r.error}${r.status === null ? '' : ` (HTTP ${r.status})`}.`
     if (!r.isAnswered && r.reason === 'aborted') return 'Keep-warm ping was cut short.'
     const ttl = fmtTtl((await current($)).ttlMs)
@@ -179,7 +183,7 @@ function actionsFor($: EngineInterface, opts: Options): Actions {
       const isAuto = await toggleAuto($)
       $.ui.toast(
         isAuto
-          ? `Auto keep-warm on: up to ${opts.maxAutoPings} pings while you are away, each a cache read at a tenth of the input price.`
+          ? `Auto keep-warm on: up to ${opts.maxAutoPings} pings while you are away, each a cache read that costs a fraction of a rewrite.`
           : 'Auto keep-warm off.',
       )
     },
@@ -257,7 +261,7 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     // One command each: the desktop composer drops anything typed after a slash command's name.
     for (const c of COMMANDS) await $.command.register(c)
-    if ((await $.store.get('isCollapsed')) === true) await update($, collapsedAtom, () => true)
+    if ((await $.store.get('isCollapsed')) === false) await update($, collapsedAtom, () => false)
     if ((await $.store.get('isAuto')) === true) await update($, autoAtom, () => true)
     if ((await $.store.get('isOpen')) === false) await update($, openAtom, () => false)
     const initial = await current($)
@@ -284,6 +288,7 @@ export const register: Register = (on, options) => {
   on('turn.start', async ($, e, next) => {
     isWorking = true
     stepsThisTurn = 0
+    turnStartedAt = await $.clock.now()
     autoPings = 0
     isCapToasted = false
     return next(e)
@@ -291,10 +296,11 @@ export const register: Register = (on, options) => {
 
   // Each main-thread response reads and writes the cache as it lands.
   on('turn.step', async function* ($, e, next) {
+    const startedAt = await $.clock.now()
     const r = yield* next(e)
     if (e.agentId === undefined && !isPinging && r.usage) {
       stepsThisTurn += 1
-      void record($, r.usage, false).catch(() => undefined)
+      void record($, r.usage, false, startedAt).catch(() => undefined)
     }
     return r
   })
@@ -303,8 +309,9 @@ export const register: Register = (on, options) => {
     const result = await next(e)
     if (e.agentId === undefined) {
       isWorking = false
-      // A host that reported no steps: the turn's summed usage stands in for its last response.
-      if (stepsThisTurn === 0 && e.usage && !isPinging) await record($, e.usage, false)
+      // A host that reported no steps: the turn's summed usage stands in for its last response, timed from
+      // the turn's start, the earliest its request can have started.
+      if (stepsThisTurn === 0 && e.usage && !isPinging) await record($, e.usage, false, turnStartedAt)
     }
     return result
   })
