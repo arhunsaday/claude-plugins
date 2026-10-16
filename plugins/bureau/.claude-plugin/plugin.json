@@ -1,7 +1,7 @@
 {
   "name": "bureau",
-  "version": "1.0.0",
-  "description": "Your session's agents as a pixel-art office in a side pane: Claude at the lead's desk, each subagent walks in, works at a desk in its trade's colour, shows what it is doing, cheers and walks out. After Le Bureau des agents",
+  "version": "1.1.0",
+  "description": "Le Bureau des agents in a side pane: its pixel-art office and engine, playing your session. Max is Claude; each subagent walks in, works at a desk of its trade, hands in its report and leaves",
   "author": {
     "name": "Arhun Saday",
     "url": "https://arhun.fr"

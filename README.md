@@ -28,7 +28,7 @@ From a shell, `claude plugin marketplace add arhunsaday/claude-plugins` and `cla
 | [context-cache](plugins/context-cache) | mod | Context usage, usage limits and prompt-cache warmth above the prompt, as rings; collapses to one line. |
 | [cache-warm](plugins/cache-warm) | mod | Prompt-cache countdown, hit rate and savings above the prompt, with keep-warm pings, toggled by /cache-warm. |
 | [assumptions](plugins/assumptions) | mod | Lists the small guesses Claude made without asking; mark each right or wrong, and a wrong one gets fixed on its own. |
-| [bureau](plugins/bureau) | mod | Your session's agents as a pixel-art office in a side pane: each subagent walks in, works, cheers and leaves. |
+| [bureau](plugins/bureau) | mod | Le Bureau des agents in a side pane: its pixel-art office and engine, playing your session's agents. |
 
 ## Layout
 

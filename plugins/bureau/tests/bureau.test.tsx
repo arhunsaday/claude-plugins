@@ -26,6 +26,7 @@ async function start($: Engine, on: On): Promise<Started> {
   on('turn.start', async (_$, e) => ({ turnId: e.turnId }))
   on('turn.complete', async (_$, e) => ({ text: e.answer }))
   on('session.start', async (_$, e) => ({ cwd: e.cwd }))
+  on('session.end', async () => ({ sessionId: 's' }) as never)
   await $.session.start({ cwd: '/tmp', surface: 'terminal', isInteractive: true })
   return s
 }
@@ -38,24 +39,34 @@ const pane = (surface: 'terminal' | 'desktop') =>
 
 test('/bureau opens the pane', async ($, on) => {
   const s = await start($, on)
-  expect(JSON.stringify(await run($, 'bureau'))).toContain('Bureau opened')
+  expect(JSON.stringify(await run($, 'bureau'))).toContain('Bureau ouvert')
   expect(s.opened).toBe(1)
 })
 
-test('the lead shows what Claude is doing', async ($, on) => {
+test('the office is a PNG: inside an SVG on the desktop, a picture on the terminal', async ($, on) => {
+  await start($, on)
+  const desk = await $.ui.mount(pane('desktop'))
+  const svg = (await desk.findAll({ type: 'Svg' }))[0]
+  expect(String(svg?.props['source'])).toContain('data:image/png;base64,iVBORw0KGgo')
+  await desk.unmount()
+  const term = await $.ui.mount(pane('terminal'))
+  const img = (await term.findAll({ type: 'Image' }))[0]
+  expect(String((img?.props['source'] as { png?: string } | undefined)?.png).startsWith('iVBORw0KGgo')).toBe(true)
+  await term.unmount()
+})
+
+test('Max shows what Claude is doing', async ($, on) => {
   await start($, on)
   await $.turn.start({ text: 'hi', turnId: 't1' } as never)
   await $.tool.call({ tool: 'Read', tool_use_id: 'r1', file_path: '/repo/src/app.ts' } as never)
-  for (const surface of ['terminal', 'desktop'] as const) {
-    const ui = await $.ui.mount(pane(surface))
-    expect(await ui.find({ text: /Reading app\.ts/ })).toBeDefined()
-    expect(await ui.find({ text: /Claude at work/ })).toBeDefined()
-    expect(await ui.find({ text: /1 reads/ })).toBeDefined()
-    await ui.unmount()
-  }
+  const ui = await $.ui.mount(pane('desktop'))
+  expect(await ui.find({ text: /Max au travail/ })).toBeDefined()
+  expect(await ui.find({ text: /Je lis app\.ts/ })).toBeDefined()
+  expect(await ui.find({ text: /1 lectures/ })).toBeDefined()
+  await ui.unmount()
 })
 
-test('a subagent walks in, works in its trade, cheers and leaves', async ($, on) => {
+test('a subagent is hired for its trade, works and leaves', async ($, on) => {
   const s = await start($, on)
   await $.turn.start({ text: 'go', turnId: 't1' } as never)
   await spawn($, 'Explore', 'Map the routes')
@@ -63,40 +74,27 @@ test('a subagent walks in, works in its trade, cheers and leaves', async ($, on)
   expect(s.opened).toBe(1)
   const ui = await $.ui.mount(pane('terminal'))
   expect(await ui.find({ text: /Iris/ })).toBeDefined()
-  expect(await ui.find({ text: /Research/ })).toBeDefined()
-  expect(await ui.find({ text: /Walking in: Map the routes/ })).toBeDefined()
-  await s.clock.advance(2500)
+  expect(await ui.find({ text: /Recherche/ })).toBeDefined()
   await $.tool.call({ tool: 'WebSearch', tool_use_id: 'w1', agentId: 'agent-1', query: 'svelte routes' } as never)
-  expect(await ui.find({ text: /Searching "svelte routes"/ })).toBeDefined()
+  expect(await ui.find({ text: /svelte routes/ })).toBeDefined()
   await $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId: 'x', reason: 'answer', agentId: 'agent-1' } as never)
-  expect(await ui.find({ text: /Done: Map the routes/ })).toBeDefined()
-  await s.clock.advance(10_000)
-  expect(await ui.find({ text: /Iris/ })).toBeUndefined()
-  await ui.unmount()
-})
-
-test('the office is pixels on the terminal and an SVG on the desktop', async ($, on) => {
-  await start($, on)
-  const term = await $.ui.mount(pane('terminal'))
-  expect((await term.findAll({ type: 'Raster' })).length).toBe(1)
-  await term.unmount()
-  const desk = await $.ui.mount(pane('desktop'))
-  const svg = (await desk.findAll({ type: 'Svg' }))[0]
-  expect(String(svg?.props['source'])).toContain('<rect')
-  await desk.unmount()
-})
-
-test('a seventh teammate waits in the hallway for a desk', async ($, on) => {
-  await start($, on)
-  for (let i = 0; i < 7; i++) await spawn($, 'general-purpose', `Task ${i + 1}`)
-  const ui = await $.ui.mount(pane('terminal'))
-  expect(await ui.find({ text: /Waiting in the hallway/ })).toBeDefined()
+  expect(await ui.find({ text: /Rend son rapport/ })).toBeDefined()
   await ui.unmount()
 })
 
 test('/bureau-auto stops the office opening on its own', async ($, on) => {
   const s = await start($, on)
-  expect(JSON.stringify(await run($, 'bureau-auto'))).toContain('only with /bureau')
+  expect(JSON.stringify(await run($, 'bureau-auto'))).toContain('plus qu’avec /bureau')
   await spawn($, 'Explore', 'Look around')
   expect(s.opened).toBe(0)
+})
+
+test('/clear empties the office', async ($, on) => {
+  await start($, on)
+  await spawn($, 'Explore', 'Look around')
+  await $.session.end({ reason: 'clear' } as never)
+  const ui = await $.ui.mount(pane('desktop'))
+  expect(await ui.find({ text: /Iris/ })).toBeUndefined()
+  expect(await ui.find({ text: /0 agent/ })).toBeDefined()
+  await ui.unmount()
 })

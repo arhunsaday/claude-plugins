@@ -35,7 +35,7 @@
     {
       "name": "bureau",
       "source": "./plugins/bureau",
-      "description": "Your session's agents as a pixel-art office in a side pane, after Le Bureau des agents",
+      "description": "Le Bureau des agents in a side pane: its pixel-art office and engine, playing your session",
       "category": "mod",
       "tags": [
         "mod",

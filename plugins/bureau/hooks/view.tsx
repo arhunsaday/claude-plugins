@@ -1,45 +1,48 @@
-// The pane: a header row, the office (cells on the terminal, an SVG on the desktop), a line per agent with its
-// bubble, and the session's counts. Host elements and theme colours for the text, as the other mods draw.
+// The pane: a header row, the office as a picture (an SVG holding the frame's PNG on the desktop, the PNG itself on
+// a terminal that shows pictures), a line per agent with its bubble, and the session's counts. Host elements and
+// theme colours for the text, as the other mods draw.
 
 import type { Elements, RenderElement, RenderSurface } from 'claude-code'
 
-import type { OfficeAgent, OfficeLead, OfficeStats } from '../types'
-import { phaseOf, ROLES } from './model'
-import { toCells, toSvg } from './pixels'
-import { drawOffice, H, W, type SceneInput } from './scene'
+import { ROLES } from './engine/activity'
+import { H, W, type Member, type Office } from './office'
 
 type TermEls = Elements['terminal']
 type DeskEls = Elements['desktop']
 
 const NAME_W = 9
-const ROLE_W = 10
-const MAX_PX = 520
+const ROLE_W = 15
+const MAX_PX = 704
 
 const clock = (ms: number) => {
   const s = Math.max(0, Math.floor(ms / 1000))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
-function summary(agents: readonly OfficeAgent[], lead: OfficeLead): string {
-  const working = agents.filter(a => a.state === 'working').length
-  const done = agents.filter(a => a.state === 'done').length
-  const parts = [lead.state === 'idle' ? 'Claude is idle' : lead.state === 'waiting' ? 'Claude waits on you' : 'Claude at work']
-  if (working) parts.push(`${working} teammate${working === 1 ? '' : 's'} at work`)
-  if (done) parts.push(`${done} done`)
+function summary(o: Office): string {
+  const team = [...o.members.values()]
+  const working = team.filter(m => m.endedAt === null).length
+  const parts = [o.leadLabel === null ? 'Max t’attend' : 'Max au travail']
+  if (working) parts.push(`${working} agent${working > 1 ? 's' : ''} au travail`)
   return parts.join(' · ')
 }
 
-export function renderPane(E: TermEls, surface: RenderSurface, s: SceneInput & { stats: OfficeStats }, columns: number): RenderElement {
+export function renderPane(E: TermEls, surface: RenderSurface, o: Office, png: string, columns: number, now: number): RenderElement {
   const { Box, Text } = E
-  const alt = summary(s.agents, s.lead)
-  const frame = drawOffice(s)
-  let scene: RenderElement
+  const alt = summary(o)
+  let picture: RenderElement
   if (surface === 'terminal') {
-    scene = <E.Raster key="office" columns={W} rows={H / 2} cells={toCells(frame)} />
+    // a picture where the terminal can show one (kitty, Ghostty), its alt elsewhere; cells are about twice as tall as wide
+    const cols = Math.max(20, Math.min(columns, 88))
+    picture = <E.Image key="office" source={{ png }} columns={cols} rows={Math.round((cols * H) / W / 2)} alt={`${alt} (le bureau s’affiche dans un terminal qui montre les images : kitty, Ghostty)`} />
   } else {
     const Svg = (E as unknown as DeskEls).Svg
-    const scale = Math.max(2, Math.min(8, Math.floor(Math.min(MAX_PX, columns * 8) / W)))
-    scene = <Svg source={toSvg(frame, scale, alt)} alt={alt} width={W * scale} height={H * scale} isInteractive />
+    const width = Math.max(W, Math.min(MAX_PX, columns * 8))
+    const height = Math.round((width * H) / W)
+    const source =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${W} ${H}">` +
+      `<image href="data:image/png;base64,${png}" width="${W}" height="${H}" style="image-rendering:pixelated" image-rendering="pixelated"/></svg>`
+    picture = <Svg key="office" source={source} alt={alt} width={width} height={height} />
   }
 
   const row = (key: string, dot: 'claude' | 'warning' | 'success' | 'error' | 'inactive', name: string, role: string, what: string, time: string) => (
@@ -49,7 +52,9 @@ export function renderPane(E: TermEls, surface: RenderSurface, s: SceneInput & {
         <Text wrap="truncate-end">{name}</Text>
       </Box>
       <Box width={ROLE_W} flexShrink={0}>
-        <Text dimColor>{role}</Text>
+        <Text dimColor wrap="truncate-end">
+          {role}
+        </Text>
       </Box>
       <Box flexGrow={1} flexShrink={1} minWidth={0}>
         <Text wrap="truncate-end">{what}</Text>
@@ -57,18 +62,23 @@ export function renderPane(E: TermEls, surface: RenderSurface, s: SceneInput & {
       {time ? <Text dimColor>{time}</Text> : null}
     </Box>
   )
-
-  const leadDot = s.lead.state === 'working' ? 'claude' : s.lead.state === 'waiting' ? 'warning' : 'inactive'
-  const leadWhat = s.lead.state === 'idle' ? 'Waiting for your next message' : (s.lead.act?.label ?? 'Thinking')
-  const team = s.agents.filter(a => phaseOf(a, s.now).at !== 'gone')
-  const st = s.stats
+  const memberRow = (m: Member) =>
+    row(
+      m.id,
+      m.endedAt === null ? 'claude' : m.ok ? 'success' : 'error',
+      m.name,
+      ROLES[m.role].label,
+      m.endedAt === null ? m.label : `${m.label} · ${m.task}`,
+      clock((m.endedAt ?? now) - m.startedAt),
+    )
+  const s = o.stats
   const counts = [
-    `${st.agents} teammate${st.agents === 1 ? '' : 's'}`,
-    `${st.searches} searches`,
-    `${st.pages} pages`,
-    `${st.reads} reads`,
-    `${st.writes} edits`,
-    `${st.commands} commands`,
+    `${s.agents} agent${s.agents > 1 ? 's' : ''}`,
+    `${s.searches} recherches`,
+    `${s.pages} pages`,
+    `${s.reads} lectures`,
+    `${s.writes} écritures`,
+    `${s.commands} commandes`,
   ].join(' · ')
 
   return (
@@ -79,28 +89,14 @@ export function renderPane(E: TermEls, surface: RenderSurface, s: SceneInput & {
           <Text bold>Bureau</Text>
           <Text dimColor>{` · ${alt}`}</Text>
         </Text>
-        {scene}
+        {picture}
       </Box>
       <Box flexDirection="column">
-        {row('lead', leadDot, 'Claude', ROLES.lead.label, leadWhat, '')}
-        {team.map(a => {
-          const p = phaseOf(a, s.now)
-          const what =
-            a.desk < 0
-              ? 'Waiting in the hallway for a desk'
-              : p.at === 'in'
-                ? `Walking in: ${a.task}`
-                : a.state === 'done'
-                  ? p.at === 'out'
-                    ? 'Done, heading out'
-                    : `Done: ${a.task}`
-                  : a.state === 'error'
-                    ? `Failed: ${a.task}`
-                    : (a.act?.label ?? `Starting: ${a.task}`)
-          const dot = a.state === 'done' ? 'success' : a.state === 'error' ? 'error' : p.at === 'in' ? 'inactive' : 'claude'
-          return row(a.id, dot, a.name, ROLES[a.role].label, what, clock((a.endedAt ?? s.now) - a.startedAt))
-        })}
-        <Text dimColor wrap="truncate-end">{counts}</Text>
+        {row('chef', o.leadLabel === null ? 'inactive' : 'claude', 'Max', 'Claude, chef', o.leadLabel ?? 'Attend ton prochain message', '')}
+        {[...o.members.values()].map(memberRow)}
+        <Text dimColor wrap="truncate-end">
+          {counts}
+        </Text>
       </Box>
     </Box>
   )
