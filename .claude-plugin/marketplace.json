@@ -33,6 +33,18 @@
       ]
     },
     {
+      "name": "bureau",
+      "source": "./plugins/bureau",
+      "description": "Your session's agents as a pixel-art office in a side pane, after Le Bureau des agents",
+      "category": "mod",
+      "tags": [
+        "mod",
+        "agents",
+        "pane",
+        "pixel-art"
+      ]
+    },
+    {
       "name": "cache-warm",
       "source": "./plugins/cache-warm",
       "description": "Prompt-cache warmth above the prompt: countdown, hit rate, savings, lapse warnings and keep-warm pings, toggled by /cache-warm",

@@ -1,0 +1,12 @@
+{
+  "name": "bureau",
+  "version": "1.0.0",
+  "description": "Your session's agents as a pixel-art office in a side pane: Claude at the lead's desk, each subagent walks in, works at a desk in its trade's colour, shows what it is doing, cheers and walks out. After Le Bureau des agents",
+  "author": {
+    "name": "Arhun Saday",
+    "url": "https://arhun.fr"
+  },
+  "license": "MIT",
+  "keywords": ["mod", "agents", "subagents", "pane", "pixel-art"],
+  "types": "./types/index.d.ts"
+}
